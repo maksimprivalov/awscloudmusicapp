@@ -1,0 +1,26 @@
+# ========== BACKEND (Java / Maven) ==========
+*.class
+*.jar
+*.war
+*.iml
+*.log
+target/
+.idea/
+*.iws
+*.ipr
+*.class
+
+# ========== AWS SAM ==========
+.aws-sam/
+.env
+
+# ========== FRONTEND (Angular) ==========
+node_modules/
+dist/
+.angular/
+.env
+
+# ========== System files ==========
+.DS_Store
+Thumbs.db
+.vscode/
