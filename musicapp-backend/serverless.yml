@@ -28,6 +28,24 @@ functions:
 plugins:
   - serverless-python-requirements
 
+resources:
+  Resources:
+    MusicContentTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: MusicContent
+        AttributeDefinitions:
+          - AttributeName: genre
+            AttributeType: S
+          - AttributeName: contentId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: genre
+            KeyType: HASH
+          - AttributeName: contentId
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
 custom:
   pythonRequirements:
     dockerizePip: true
