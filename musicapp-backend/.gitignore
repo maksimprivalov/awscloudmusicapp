@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual envs
+.venv/
+env/
+venv/
+
+# Serverless build artifacts
+.serverless/
+.build/
+
+# Node
+node_modules/
+
+# Python dependencies (если случайно ставил с --target .)
+*.dist-info/
+bin/

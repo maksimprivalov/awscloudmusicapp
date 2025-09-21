@@ -1,0 +1,33 @@
+service: cloud-music-backend
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: eu-central-1
+  environment:
+    USER_POOL_ID: eu-central-1_AHb0aoBcX
+    CLIENT_ID: 7gvfvp342fp6i6bdtsjrgl6a47
+
+functions:
+  register:
+    handler: handler.register
+    events:
+      - http:
+          path: auth/register
+          method: post
+          cors: true
+
+  login:
+    handler: handler.login
+    events:
+      - http:
+          path: auth/login
+          method: post
+          cors: true
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
