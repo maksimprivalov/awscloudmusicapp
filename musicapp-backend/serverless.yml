@@ -8,6 +8,19 @@ provider:
     USER_POOL_ID: eu-central-1_AHb0aoBcX
     CLIENT_ID: 7gvfvp342fp6i6bdtsjrgl6a47
 
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:GetItem"
+        - "dynamodb:Query"
+        - "dynamodb:Scan"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:DeleteItem"
+      Resource:
+        - "arn:aws:dynamodb:eu-central-1:*:table/Artists"
+
+        
 functions:
   register:
     handler: handler.register
@@ -25,26 +38,46 @@ functions:
           method: post
           cors: true
 
-plugins:
-  - serverless-python-requirements
+  createArtist:
+    handler: handler.create_artist
+    events:
+      - http:
+          path: admin/artist
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
 
 resources:
   Resources:
-    MusicContentTable:
+    UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: MusicContent
+        TableName: Users
         AttributeDefinitions:
-          - AttributeName: genre
-            AttributeType: S
-          - AttributeName: contentId
+          - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: genre
+          - AttributeName: userId
             KeyType: HASH
-          - AttributeName: contentId
-            KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
+
+    ArtistsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Artists
+        AttributeDefinitions:
+          - AttributeName: artistId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: artistId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+plugins:
+  - serverless-python-requirements
 
 custom:
   pythonRequirements:
