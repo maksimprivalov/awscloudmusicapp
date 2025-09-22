@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
+import {AuthService, RegisterDto} from '../../core/auth.service';
 
 @Component({
   selector: 'app-register',
@@ -27,16 +27,22 @@ export class RegisterComponent {
 
   submit() {
     if (this.form.invalid) return;
+
+    const payload: RegisterDto = {
+      first_name: this.form.value.firstName!,
+      last_name:  this.form.value.lastName!,
+      birthdate:  this.form.value.birthDate!, // tip="date" daje YYYY-MM-DD
+      email:      this.form.value.email!,
+      password:   this.form.value.password!
+    };
+
     this.loading = true;
-    this.auth.register(this.form.value as any).subscribe({
-      next: () => {
+    this.auth.register(payload).subscribe({
+      next: () => { this.loading = false; this.router.navigate(['/login']); },
+      error: (e) => {
+        console.error('REGISTER ERROR', e);               
+        this.err = e?.error?.error || e?.error || 'Registracija nije uspela.';
         this.loading = false;
-        this.router.navigate(['/login']);
-      },
-      error: () => {
-        this.err = 'Registracija nije uspela.';
-        this.loading = false;
-      },
-    });
+      }    });
   }
 }
