@@ -1,8 +1,22 @@
 import boto3
 import os
-import json
 import uuid
 from datetime import datetime
+import json
+
+ALLOWED_ORIGIN = "http://localhost:4200"
+
+def cors_response(status, body):
+    return {
+        "statusCode": status,
+        "headers": {
+            "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        },
+        "body": json.dumps(body) if not isinstance(body, str) else body,
+    }
 
 cognito = boto3.client("cognito-idp")
 
@@ -38,19 +52,25 @@ def create_artist(event, context):
         "createdAt": datetime.utcnow().isoformat()
     }
 
+    # try:
+    #     tableArtists.put_item(Item=item)
+    #     return {
+    #         "statusCode": 201,
+    #         "body": json.dumps({"message": "Artist created", "artistId": artist_id})
+    #     }
+    # except Exception as e:
+    #     return {"statusCode": 500, "body": str(e)}
     try:
         tableArtists.put_item(Item=item)
-        return {
-            "statusCode": 201,
-            "body": json.dumps({"message": "Artist created", "artistId": artist_id})
-        }
+        return cors_response(201, {"message": "Artist created", "artistId": artist_id})
     except Exception as e:
-        return {"statusCode": 500, "body": str(e)}
+        return cors_response(500, {"error": str(e)})
     
 def register(event, context):
     body = event.get("body")
     if body is None:
-        return {"statusCode": 400, "body": "No data"}
+        return cors_response(400, {"error": "No data"})
+
 
     data = json.loads(body)
 
@@ -66,20 +86,17 @@ def register(event, context):
                 {"Name": "birthdate", "Value": data["birthdate"]}
             ],
         )
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
-                "message": "User registered",
-                "userSub": response["UserSub"]
-            })
-        }
+        return cors_response(200, {
+            "message": "User registered",
+            "userSub": response["UserSub"]
+        })
     except Exception as e:
-        return {"statusCode": 400, "body": str(e)}
+        return cors_response(400, {"error": str(e)})
 
 def login(event, context):
     body = event.get("body")
     if body is None:
-        return {"statusCode": 400, "body": "No data"}
+        return cors_response(400, {"error": "No data"})
 
     data = json.loads(body)
 
@@ -92,9 +109,6 @@ def login(event, context):
                 "PASSWORD": data["password"]
             },
         )
-        return {
-            "statusCode": 200,
-            "body": json.dumps(response["AuthenticationResult"])
-        }
+        return cors_response(200, response["AuthenticationResult"])
     except Exception as e:
-        return {"statusCode": 400, "body": str(e)}
+        return cors_response(400, {"error": str(e)})
