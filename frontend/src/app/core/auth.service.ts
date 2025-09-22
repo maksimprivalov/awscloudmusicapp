@@ -1,27 +1,36 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import {HttpClient} from '@angular/common/http';
-import {environment} from '../../environments/environment';
-import {tap} from 'rxjs';
+import { environment } from '../../environments/environment';
+import { tap } from 'rxjs/operators';
+
+export interface RegisterDto {
+  first_name: string;
+  last_name: string;
+  birthdate: string; // YYYY-MM-DD
+  email: string;
+  password: string;
+}
+export interface LoginDto {
+  email: string;
+  password: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private tokenKey = 'jwt';
-
   constructor(private http: HttpClient) {}
 
-  register(payload: { firstName: string; lastName: string; birthDate: string; username: string; email: string; password: string; }) {
+  register(payload: RegisterDto) {
     return this.http.post(`${environment.apiBase}/auth/register`, payload);
   }
 
-  login(payload: { username: string; password: string; }) {
-    return this.http.post<{ idToken: string }>(`${environment.apiBase}/auth/login`, payload)
+  login(payload: LoginDto) {
+    return this.http
+      .post<{ idToken: string }>(`${environment.apiBase}/auth/login`, payload)
       .pipe(tap(res => localStorage.setItem(this.tokenKey, res.idToken)));
   }
 
-  logout() { localStorage.removeItem(this.tokenKey); }
-
   isAuthenticated(): boolean { return !!localStorage.getItem(this.tokenKey); }
-
   getToken(): string | null { return localStorage.getItem(this.tokenKey); }
+  logout() { localStorage.removeItem(this.tokenKey); }
 }
-
