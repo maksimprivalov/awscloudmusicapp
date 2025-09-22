@@ -1,0 +1,47 @@
+<div class="app-container">
+  <section class="card">
+    <h1>Create account</h1>
+    <p class="sub">Join the Cloud Music app</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid" novalidate>
+      <div class="input">
+        <label for="firstName">First name</label>
+        <input id="firstName" type="text" formControlName="firstName" placeholder="Ana" />
+      </div>
+
+      <div class="input">
+        <label for="lastName">Last name</label>
+        <input id="lastName" type="text" formControlName="lastName" placeholder="Anic" />
+      </div>
+
+      <div class="input">
+        <label for="birthDate">Birth date</label>
+        <input id="birthDate" type="date" formControlName="birthDate" />
+      </div>
+
+      <div class="input">
+        <label for="username">Username</label>
+        <input id="username" type="text" formControlName="username" placeholder="ana.anic" />
+      </div>
+
+      <div class="input">
+        <label for="email">Email</label>
+        <input id="email" type="email" formControlName="email" placeholder="ana@example.com" />
+      </div>
+
+      <div class="input">
+        <label for="password">Password</label>
+        <input id="password" type="password" formControlName="password" placeholder="At least 6 characters" />
+      </div>
+
+      <div *ngIf="err" class="msg error">{{ err }}</div>
+
+      <div class="actions">
+        <button class="btn secondary" type="button" routerLink="/login">I already have an account</button>
+        <button class="btn" type="submit" [disabled]="loading || form.invalid">
+          {{ loading ? 'Creating…' : 'Create account' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

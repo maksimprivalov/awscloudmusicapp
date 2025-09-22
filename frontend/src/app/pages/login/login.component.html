@@ -1,0 +1,31 @@
+<div class="app-container">
+  <section class="card">
+    <h1>Welcome back</h1>
+    <p class="sub">Sign in to continue</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid" novalidate>
+      <div class="input">
+        <label for="username">Username</label>
+        <input id="username" type="text" formControlName="username" placeholder="e.g. teodora24" />
+      </div>
+
+      <div class="input">
+        <label for="password">Password</label>
+        <input id="password" type="password" formControlName="password" placeholder="••••••••" />
+      </div>
+
+      <div *ngIf="err" class="msg error">{{ err }}</div>
+
+      <div class="actions">
+        <button class="btn secondary" type="button" routerLink="/register">Create account</button>
+        <button class="btn" type="submit" [disabled]="loading || form.invalid">
+          {{ loading ? 'Signing in…' : 'Sign in' }}
+        </button>
+      </div>
+    </form>
+
+    <div class="helper">
+      Trouble signing in? <a class="link" href="#">Reset password</a>
+    </div>
+  </section>
+</div>

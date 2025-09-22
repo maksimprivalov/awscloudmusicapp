@@ -1,0 +1,63 @@
+<div class="app-container">
+  <section class="card" style="width:min(1080px, 96vw);">
+    <h1>Discover</h1>
+    <p class="sub">Filter by genre, artist or album</p>
+
+    <div class="toolbar">
+      <div class="input">
+        <label for="genre">Genre</label>
+        <select id="genre" formControlName="genre" [formGroup]="form">
+          <option value="">All</option>
+          <option>Pop</option>
+          <option>Rock</option>
+          <option>Hip-Hop</option>
+          <option>Lo-fi</option>
+          <option>Jazz</option>
+          <option>EDM</option>
+        </select>
+      </div>
+
+      <div class="input">
+        <label for="artist">Artist</label>
+        <input id="artist" type="text" formControlName="artist" [formGroup]="form" placeholder="e.g. Dua Lipa" />
+      </div>
+
+      <div class="input">
+        <label for="album">Album</label>
+        <input id="album" type="text" formControlName="album" [formGroup]="form" placeholder="e.g. Future Nostalgia" />
+      </div>
+
+      <div style="margin-left:auto;">
+        <button class="btn" (click)="search()">Search</button>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="msg info">Loading results…</div>
+
+    <div class="grid" *ngIf="!loading && items?.length">
+      <article class="card-sm" *ngFor="let it of items">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <strong>{{ it.title || it.name }}</strong>
+          <span class="badge">{{ it.genre || '—' }}</span>
+        </div>
+        <div style="color:var(--muted); font-size:13px; margin-top:6px;">
+          {{ it.artist || 'Unknown artist' }}
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn secondary" type="button">Details</button>
+          <button class="btn" type="button">Play</button>
+        </div>
+      </article>
+    </div>
+
+    <div *ngIf="!loading && (!items || !items.length)" class="msg info">
+      No results. Try adjusting filters.
+    </div>
+
+    <div class="pager" *ngIf="total > (items?.length ?? 0)">
+      <button class="btn secondary" type="button" (click)="search(page-1)" [disabled]="page<=0">Prev</button>
+      <span>{{ page+1 }}</span>
+      <button class="btn secondary" type="button" (click)="search(page+1)">Next</button>
+    </div>
+  </section>
+</div>
