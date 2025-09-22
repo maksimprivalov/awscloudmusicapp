@@ -28,7 +28,12 @@ functions:
       - http:
           path: auth/register
           method: post
-          cors: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
 
   login:
     handler: handler.login
@@ -36,7 +41,12 @@ functions:
       - http:
           path: auth/login
           method: post
-          cors: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
 
   createArtist:
     handler: handler.create_artist
@@ -44,7 +54,12 @@ functions:
       - http:
           path: admin/artist
           method: post
-          cors: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
@@ -52,6 +67,24 @@ functions:
 
 resources:
   Resources:
+    GatewayResponseDefault4XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseType: DEFAULT_4XX
+        RestApiId: { Ref: ApiGatewayRestApi }
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'http://localhost:4200'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+    GatewayResponseDefault5XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseType: DEFAULT_5XX
+        RestApiId: { Ref: ApiGatewayRestApi }
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'http://localhost:4200'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
     UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -81,4 +114,5 @@ plugins:
 
 custom:
   pythonRequirements:
-    dockerizePip: true
+    dockerizePip: false
+    slim: true
