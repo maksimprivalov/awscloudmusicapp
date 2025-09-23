@@ -1,51 +1,58 @@
 <div class="app-container">
   <section class="card" style="width:min(1080px, 96vw);">
     <h1>Discover</h1>
-    <p class="sub">Filter by genre, artist or album</p>
+    <p class="sub">Filter by genre and type</p>
 
-    <div class="toolbar">
+    <form class="toolbar" [formGroup]="form" (ngSubmit)="search(true)">
       <div class="input">
         <label for="genre">Genre</label>
-        <select id="genre" formControlName="genre" [formGroup]="form">
-          <option value="">All</option>
-          <option>Pop</option>
-          <option>Rock</option>
-          <option>Hip-Hop</option>
-          <option>Lo-fi</option>
-          <option>Jazz</option>
-          <option>EDM</option>
+        <select id="genre" formControlName="genre">
+          <option value="">-- choose --</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="lofi">Lo-fi</option>
+          <option value="rap">Rap</option>
+          <option value="jazz">Jazz</option>
+          <option value="electronic">Electronic</option>
+          <option value="metal">Metal</option>
+          <option value="folk">Folk</option>
         </select>
       </div>
 
       <div class="input">
-        <label for="artist">Artist</label>
-        <input id="artist" type="text" formControlName="artist" [formGroup]="form" placeholder="e.g. Dua Lipa" />
+        <label for="type">Type</label>
+        <select id="type" formControlName="type">
+          <option value="">All</option>
+          <option value="album">Album</option>
+          <option value="artist">Artist</option>
+        </select>
       </div>
 
       <div class="input">
-        <label for="album">Album</label>
-        <input id="album" type="text" formControlName="album" [formGroup]="form" placeholder="e.g. Future Nostalgia" />
+        <label for="limit">Limit</label>
+        <input id="limit" type="number" min="1" max="50" formControlName="limit" />
       </div>
 
       <div style="margin-left:auto;">
-        <button class="btn" (click)="search()">Search</button>
+        <button class="btn" type="submit" [disabled]="loading">Search</button>
       </div>
-    </div>
+    </form>
 
     <div *ngIf="loading" class="msg info">Loading results…</div>
+    <div *ngIf="error" class="msg error">{{ error }}</div>
 
     <div class="grid" *ngIf="!loading && items?.length">
       <article class="card-sm" *ngFor="let it of items">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-          <strong>{{ it.title || it.name }}</strong>
-          <span class="badge">{{ it.genre || '—' }}</span>
+          <strong>{{ it.name }}</strong>
+          <span class="badge">{{ it.entityType }}</span>
         </div>
         <div style="color:var(--muted); font-size:13px; margin-top:6px;">
-          {{ it.artist || 'Unknown artist' }}
+          {{ it.primaryGenre || '—' }}
         </div>
         <div style="display:flex; gap:8px; margin-top:10px;">
-          <button class="btn secondary" type="button">Details</button>
-          <button class="btn" type="button">Play</button>
+          <button class="btn secondary" type="button" (click)="openDetails(it)" [disabled]="it.entityType!=='ALBUM'">Details</button>
+          <button class="btn" type="button" disabled>Play</button>
         </div>
       </article>
     </div>
@@ -54,10 +61,8 @@
       No results. Try adjusting filters.
     </div>
 
-    <div class="pager" *ngIf="total > (items?.length ?? 0)">
-      <button class="btn secondary" type="button" (click)="search(page-1)" [disabled]="page<=0">Prev</button>
-      <span>{{ page+1 }}</span>
-      <button class="btn secondary" type="button" (click)="search(page+1)">Next</button>
+    <div class="pager" *ngIf="nextKey">
+      <button class="btn secondary" type="button" (click)="loadMore()" [disabled]="loading">Load more</button>
     </div>
   </section>
 </div>
