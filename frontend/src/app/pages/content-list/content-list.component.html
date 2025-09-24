@@ -1,0 +1,11 @@
+<h2>Sadržaj</h2>
+<div *ngIf="loading">Učitavanje...</div>
+<div *ngIf="!loading && !items.length">Nema sadržaja</div>
+<ul>
+  <li *ngFor="let it of items">
+    <strong>{{ it.name }}</strong>
+    <small> ({{ it.fileType }} • {{ it.fileSize }} B)</small>
+    <button (click)="open((it.contentId || (it.PK?.split('#')[1])) )">Detalji</button>
+    <audio *ngIf="it.playUrl" [src]="it.playUrl" controls></audio>
+  </li>
+</ul>
