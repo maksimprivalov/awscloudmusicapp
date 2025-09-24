@@ -5,19 +5,31 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid" novalidate>
       <div class="input">
-        <label for="username">Username</label>
-        <input id="username" type="text" formControlName="username" placeholder="e.g. teodora24" />
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="e.g. user@example.com"
+        />
       </div>
 
       <div class="input">
         <label for="password">Password</label>
-        <input id="password" type="password" formControlName="password" placeholder="••••••••" />
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="••••••••"
+        />
       </div>
 
       <div *ngIf="err" class="msg error">{{ err }}</div>
 
       <div class="actions">
-        <button class="btn secondary" type="button" routerLink="/register">Create account</button>
+        <button class="btn secondary" type="button" routerLink="/register">
+          Create account
+        </button>
         <button class="btn" type="submit" [disabled]="loading || form.invalid">
           {{ loading ? 'Signing in…' : 'Sign in' }}
         </button>

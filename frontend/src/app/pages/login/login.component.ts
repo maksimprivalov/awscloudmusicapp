@@ -7,16 +7,19 @@ import { AuthService } from '../../core/auth.service';
   selector: 'app-login',
   templateUrl: './login.component.html',
   standalone: false
-
 })
 export class LoginComponent {
   form: FormGroup;
   loading = false;
   err?: string;
 
-  constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {
+  constructor(
+    private fb: FormBuilder,
+    private auth: AuthService,
+    private router: Router
+  ) {
     this.form = this.fb.group({
-      username: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
     });
   }

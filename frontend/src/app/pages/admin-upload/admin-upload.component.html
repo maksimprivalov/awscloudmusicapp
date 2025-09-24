@@ -1,0 +1,25 @@
+<h2>Admin: Upload sadržaja</h2>
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <label>Naziv (name)</label>
+  <input formControlName="name" />
+
+  <label>Žanrovi (CSV)</label>
+  <input formControlName="genres" placeholder="rock, pop" />
+
+  <label>Artists (CSV artistId)</label>
+  <input formControlName="artists" placeholder="uuid1, uuid2" />
+
+  <label>Album ID (opciono)</label>
+  <input formControlName="albumId" />
+
+  <label>Track #</label>
+  <input type="number" formControlName="trackNo" />
+
+  <label>Fajl</label>
+  <input type="file" (change)="onFileChange($event)" />
+
+  <button [disabled]="uploading || form.invalid">Upload</button>
+</form>
+
+<p *ngIf="status">{{ status }}</p>
+<p *ngIf="createdId">Kreirano: {{ createdId }}</p>
