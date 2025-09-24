@@ -1,4 +1,3 @@
-// app.module.ts
 import { NgModule, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
@@ -10,20 +9,28 @@ import { LoginComponent } from './pages/login/login.component';
 import { RegisterComponent } from './pages/register/register.component';
 import { DiscoverComponent } from './pages/discover/discover.component';
 import { AuthInterceptor } from './core/auth-interceptor';
+import { AdminUploadComponent } from './pages/admin-upload/admin-upload.component';
+import { ContentListComponent } from './pages/content-list/content-list.component';
+import { ContentDetailComponent } from './pages/content-detail/content-detail.component';
 
 @NgModule({
   declarations: [
     App,
     LoginComponent,
     RegisterComponent,
-    DiscoverComponent
+    DiscoverComponent,
+    AdminUploadComponent,
+    AdminUploadComponent,
+    ContentListComponent,
+    ContentDetailComponent
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
     FormsModule,
     ReactiveFormsModule,
-    AppRoutingModule
+    AppRoutingModule,
+    FormsModule
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
