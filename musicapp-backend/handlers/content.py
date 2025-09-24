@@ -1,128 +1,26 @@
+import os, json, uuid, random, urllib.parse
 import boto3
-import os
-import uuid
 from datetime import datetime
-import json
-import random
-import urllib.parse
-from boto3.dynamodb.conditions import Key, Attr
 from typing import Optional, Dict
+from boto3.dynamodb.conditions import Key, Attr
+from utils.cors import response as cors_response
 
-
-ALLOWED_ORIGIN = "http://localhost:4200"
-DEBUG = os.environ.get("DEBUG") == "1"
-
-def cors_response(status, body):
-    return {
-        "statusCode": status,
-        "headers": {
-            "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        },
-        "body": json.dumps(body) if not isinstance(body, str) else body,
-    }
-
-cognito = boto3.client("cognito-idp")
-
-USER_POOL_ID = os.environ["USER_POOL_ID"]
-CLIENT_ID = os.environ["CLIENT_ID"]
-
+# ===== AWS clients & env =====
+s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
-tableArtists = dynamodb.Table("Artists")
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "Music")
-musicTable = dynamodb.Table(TABLE_NAME)
+music_table = dynamodb.Table(TABLE_NAME)
 
+BUCKET = os.environ["BUCKET_NAME"]
 
-def create_artist(event, context):
-    claims = event["requestContext"]["authorizer"]["claims"]
+# ===== helpers =====
+def _is_admin(event):
+    claims = (event.get("requestContext", {})
+                    .get("authorizer", {})
+                    .get("claims", {}))
     groups = claims.get("cognito:groups", "")
-
-    if "Admin" not in groups:
-        return {"statusCode": 403, "body": "Forbidden – Admins only"}
-
-    body = json.loads(event.get("body") or "{}")
-
-    name = body.get("name")
-    bio = body.get("bio")
-    genres = body.get("genres", [])
-
-    if not name or not bio:
-        return {"statusCode": 400, "body": "Name and bio required"}
-
-    artist_id = str(uuid.uuid4())
-
-    item = {
-        "artistId": artist_id,
-        "name": name,
-        "bio": bio,
-        "genres": genres,
-        "createdAt": datetime.utcnow().isoformat()
-    }
-
-    # try:
-    #     tableArtists.put_item(Item=item)
-    #     return {
-    #         "statusCode": 201,
-    #         "body": json.dumps({"message": "Artist created", "artistId": artist_id})
-    #     }
-    # except Exception as e:
-    #     return {"statusCode": 500, "body": str(e)}
-    try:
-        tableArtists.put_item(Item=item)
-        return cors_response(201, {"message": "Artist created", "artistId": artist_id})
-    except Exception as e:
-        return cors_response(500, {"error": str(e)})
-    
-def register(event, context):
-    body = event.get("body")
-    if body is None:
-        return cors_response(400, {"error": "No data"})
-
-
-    data = json.loads(body)
-
-    try:
-        response = cognito.sign_up(
-            ClientId=CLIENT_ID,
-            Username=data["email"],
-            Password=data["password"],
-            UserAttributes=[
-                {"Name": "given_name", "Value": data["first_name"]},
-                {"Name": "family_name", "Value": data["last_name"]},
-                {"Name": "email", "Value": data["email"]},
-                {"Name": "birthdate", "Value": data["birthdate"]}
-            ],
-        )
-        return cors_response(200, {
-            "message": "User registered",
-            "userSub": response["UserSub"]
-        })
-    except Exception as e:
-        return cors_response(400, {"error": str(e)})
-
-def login(event, context):
-    body = event.get("body")
-    if body is None:
-        return cors_response(400, {"error": "No data"})
-
-    data = json.loads(body)
-
-    try:
-        response = cognito.initiate_auth(
-            ClientId=CLIENT_ID,
-            AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={
-                "USERNAME": data["email"],
-                "PASSWORD": data["password"]
-            },
-        )
-        return cors_response(200, response["AuthenticationResult"])
-    except Exception as e:
-        return cors_response(400, {"error": str(e)})
-
+    return "Admin" in groups
 
 def _encode_last_key(last_key: Optional[Dict]) -> Optional[str]:
     if not last_key:
@@ -137,11 +35,131 @@ def _decode_last_key(s: Optional[str]) -> Optional[Dict]:
     except Exception:
         return None
 
+# =====================================================================
+#                        1) ADMIN: upload flow
+# =====================================================================
+def get_upload_url(event, context):
+    # только админ
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+
+    body = json.loads(event.get("body") or "{}")
+    file_name = body.get("fileName")      # напр. "song.mp3"
+    content_type = body.get("contentType","application/octet-stream")
+
+    if not file_name:
+        return cors_response(400, {"error": "fileName required"})
+
+    content_id = str(uuid.uuid4())
+    # кладём файлы в папку tracks/<contentId>/<originalName>
+    s3_key = f"tracks/{content_id}/{file_name}"
+
+    url = s3.generate_presigned_url(
+        ClientMethod="put_object",
+        Params={"Bucket": BUCKET, "Key": s3_key, "ContentType": content_type},
+        ExpiresIn=3600
+    )
+
+    return cors_response(200, {"contentId": content_id, "s3Key": s3_key, "uploadUrl": url})
+
+def create_content(event, context):
+    # только админ
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+
+    body = json.loads(event.get("body") or "{}")
+    content_id = body.get("contentId")
+    s3_key = body.get("s3Key")
+    name = body.get("name") 
+    genres = body.get("genres", [])
+    artists = body.get("artists", [])
+    album_id = body.get("albumId")
+    track_no = body.get("trackNo")
+
+    if not content_id or not s3_key or not name:
+        return cors_response(400, {"error": "contentId, s3Key, name required"})
+
+    try:
+        head = s3.head_object(Bucket=BUCKET, Key=s3_key)
+        file_type = head.get("ContentType", "application/octet-stream")
+        file_size = head["ContentLength"]
+        last_modified = head["LastModified"].isoformat()
+    except Exception as e:
+        return cors_response(400, {"error": f"S3 object not found or not uploaded yet: {e}"})
+
+    now = datetime.utcnow().isoformat()
+
+    item = {
+        "PK": f"CONTENT#{content_id}",
+        "SK": "METADATA",
+        "entityType": "TRACK",
+        "contentId": content_id,
+        "name": name,
+        "fileName": s3_key.split("/")[-1],
+        "fileType": file_type,
+        "fileSize": file_size,
+        "createdAt": now,
+        "updatedAt": now,
+        "fileLastModified": last_modified,
+        "genres": genres,
+        "artists": artists,
+        "albumId": album_id,
+        "s3Key": s3_key,
+        "GSI1PK": f"GENRE#{genres[0]}" if genres else "GENRE#unknown",
+        "GSI1SK": f"TRACK#{now}#{content_id}",
+    }
+
+    if album_id:
+        item["GSI2PK"] = f"ALBUM#{album_id}"
+        item["GSI2SK"] = f"TRACK#{str(track_no or 0).zfill(3)}"
+    elif artists:
+        item["GSI2PK"] = f"ARTIST#{artists[0]}"
+        item["GSI2SK"] = f"TRACK#{now}"
+
+    music_table.put_item(Item=item)
+    return cors_response(201, {"message": "Content created", "contentId": content_id})
+
+# =====================================================================
+#                2) LIST / GET 
+# =====================================================================
+def list_content(event, context):
+
+    resp = music_table.scan(Limit=50)
+    items = resp.get("Items", [])
+
+    for it in items:
+        key = it.get("s3Key")
+        if key:
+            it["playUrl"] = s3.generate_presigned_url(
+                "get_object", Params={"Bucket": BUCKET, "Key": key}, ExpiresIn=3600
+            )
+    return cors_response(200, items)
+
+def get_content(event, context):
+    content_id = (event.get("pathParameters") or {}).get("id")
+    if not content_id:
+        return cors_response(400, {"error": "id required"})
+
+    resp = music_table.get_item(Key={"PK": f"CONTENT#{content_id}", "SK": "METADATA"})
+    item = resp.get("Item")
+    if not item:
+        return cors_response(404, {"error": "Not found"})
+
+    key = item.get("s3Key")
+    if key:
+        item["playUrl"] = s3.generate_presigned_url(
+            "get_object", Params={"Bucket": BUCKET, "Key": key}, ExpiresIn=3600
+        )
+    return cors_response(200, item)
+
+# =====================================================================
+#                       3) Discover (GSI1)
+# =====================================================================
 def discover(event, context):
     try:
         params = event.get("queryStringParameters") or {}
         genre = (params.get("genre") or "").strip().lower()
-        typ = (params.get("type") or "").strip().upper()   # "ALBUM" | "ARTIST" | "" (oba)
+        typ = (params.get("type") or "").strip().upper()   # "ALBUM" | "ARTIST" | "" (оба)
         limit_str = params.get("limit") or "12"
 
         try:
@@ -152,7 +170,6 @@ def discover(event, context):
         if not genre:
             return cors_response(400, {"message": "Missing required query param: genre"})
 
-        # --- NOVO: pripremi prefix i (po potrebi) filter za isključivanje SONG ---
         prefix = "TYPE#"
         filter_expr = None
         if typ == "ALBUM":
@@ -160,7 +177,7 @@ def discover(event, context):
         elif typ == "ARTIST":
             prefix = "TYPE#ARTIST"
         else:
-            # "oba" (default) -> ALBUM + ARTIST, bez SONG
+
             filter_expr = Attr("entityType").is_in(["ALBUM", "ARTIST"])
 
         last_key = _decode_last_key(params.get("lastKey"))
@@ -173,9 +190,9 @@ def discover(event, context):
         if last_key is not None:
             query_kwargs["ExclusiveStartKey"] = last_key
         if filter_expr is not None:
-            query_kwargs["FilterExpression"] = filter_expr   # ⬅️ ključno: izbacuje SONG
+            query_kwargs["FilterExpression"] = filter_expr
 
-        result = musicTable.query(**query_kwargs)
+        result = music_table.query(**query_kwargs)
 
         items = result.get("Items", [])
         lek = result.get("LastEvaluatedKey")
@@ -194,23 +211,23 @@ def discover(event, context):
         return cors_response(200, {"items": out, "nextKey": _encode_last_key(lek)})
 
     except Exception as e:
-        import traceback, os
+        import traceback
         print("discover ERROR:", traceback.format_exc())
         body = {"message": "Internal Server Error"}
         if os.environ.get("DEBUG") == "1":
             body["detail"] = str(e)
         return cors_response(500, body)
 
-
+# =====================================================================
+#                   4) Seed / Reset (admin)
+# =====================================================================
 def seed(event, context):
-    import time
-    import logging
+    import time, logging
     logging.getLogger().setLevel("INFO")
 
     try:
         genres = ["pop", "rock", "lofi", "rap", "jazz", "electronic", "metal", "folk"]
 
-        # opcioni body (mali broj za start da izbegnemo timeout)
         body = {}
         if event.get("body"):
             try:
@@ -218,16 +235,15 @@ def seed(event, context):
             except Exception:
                 body = {}
 
-        n_artists = int(body.get("artists", 5))          # manjе default vrednosti
+        n_artists = int(body.get("artists", 5))
         n_albums = int(body.get("albums", 10))
         songs_per_album = int(body.get("songs_per_album", 5))
 
-        # helperi
         def put_requests(items):
             return [{"PutRequest": {"Item": it}} for it in items]
 
         def write_batches(request_items):
-            """Client-level BatchWrite sa retry za UnprocessedItems"""
+            """Client-level BatchWrite с retry для UnprocessedItems"""
             client = boto3.client("dynamodb")
             unprocessed = {"RequestItems": {TABLE_NAME: request_items}}
             backoff = 0.2
@@ -245,7 +261,6 @@ def seed(event, context):
                     break
             return total_put
 
-        # 1) ARTISTS
         artist_ids = []
         artist_items = []
         for i in range(n_artists):
@@ -263,20 +278,16 @@ def seed(event, context):
             })
             artist_ids.append(artist_id)
 
-        # piši po 25
         total_written = 0
         for i in range(0, len(artist_items), 25):
-            chunk = artist_items[i:i+25]
-            total_written += write_batches(put_requests(chunk))
+            total_written += write_batches(put_requests(artist_items[i:i+25]))
 
-        # 2) ALBUMS + SONGS
         album_song_items = []
         for a in range(n_albums):
             album_id = str(uuid.uuid4())
             g = random.choice(genres)
             artist_id = artist_ids[a % len(artist_ids)]
 
-            # album
             album_song_items.append({
                 "PK": {"S": f"ALBUM#{album_id}"},
                 "SK": {"S": "ALBUM"},
@@ -306,8 +317,7 @@ def seed(event, context):
                 })
 
         for i in range(0, len(album_song_items), 25):
-            chunk = album_song_items[i:i+25]
-            total_written += write_batches(put_requests(chunk))
+            total_written += write_batches(put_requests(album_song_items[i:i+25]))
 
         return cors_response(200, {
             "message": "Seed completed",
@@ -318,19 +328,16 @@ def seed(event, context):
         })
 
     except Exception as e:
-        # detaljniji log ka CloudWatch-u
         import traceback
         traceback.print_exc()
         return cors_response(500, {"message": "Internal Server Error", "detail": str(e)})
 
-
 def reset_music(event, context):
-    import time
-    import logging
+    import time, logging
     logging.getLogger().setLevel("INFO")
 
     try:
-        # 1) Skupi sve ključeve (PK, SK)
+        # 1) Собираем все ключи (PK, SK)
         client = boto3.client("dynamodb")
         keys = []
         scan_kwargs = {
@@ -347,7 +354,7 @@ def reset_music(event, context):
             else:
                 break
 
-        # 2) Batch delete po 25 sa retry
+        # 2) Batch delete по 25 с retry
         def delete_batch(key_batch):
             req = [{"DeleteRequest": {"Key": k}} for k in key_batch]
             unprocessed = {"RequestItems": {TABLE_NAME: req}}
@@ -372,7 +379,7 @@ def reset_music(event, context):
         return cors_response(200, {"message": "Music truncated", "deleted": total_deleted})
 
     except Exception as e:
-        import traceback, os
+        import traceback
         print("reset_music ERROR:", traceback.format_exc())
         body = {"message": "Internal Server Error"}
         if os.environ.get("DEBUG") == "1":
