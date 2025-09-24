@@ -54,7 +54,6 @@ def get_upload_url(event, context):
     # кладём файлы в папку tracks/<contentId>/<originalName>
     s3_key = f"tracks/{content_id}/{file_name}"
 
-    # presigned URL на PUT (клиент загрузит файл напрямую)
     url = s3.generate_presigned_url(
         ClientMethod="put_object",
         Params={"Bucket": BUCKET, "Key": s3_key, "ContentType": content_type},
@@ -124,7 +123,7 @@ def create_content(event, context):
 #                2) LIST / GET 
 # =====================================================================
 def list_content(event, context):
-    # MVP: scan (позже лучше Query по индексам + пагинация)
+
     resp = music_table.scan(Limit=50)
     items = resp.get("Items", [])
 
