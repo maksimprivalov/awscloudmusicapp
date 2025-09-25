@@ -1,0 +1,173 @@
+/* Pozadina stranice sa blagim gradijentom */
+.page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #fdfbda, #ffeaa7);
+  font-family: "Inter", sans-serif;
+}
+
+/* Kartica forme */
+.card {
+  width: 100%;
+  max-width: 480px;
+  background: #d89955;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  color: #f1f1f1;
+  animation: fadeIn 0.5s ease;
+}
+
+/* Naslov */
+h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+}
+
+/* Polja forme */
+.field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+}
+
+label {
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #bbb;
+}
+
+/* Inputi i textarea */
+input, textarea {
+  background: #d0d9e3;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 12px;
+  color: #f1f1f1;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+input:focus, textarea:focus {
+  border-color: #4b8bff;
+  outline: none;
+  box-shadow: 0 0 6px rgba(75, 139, 255, 0.4);
+}
+
+/* Žanrovi – input + dugme */
+.genre-input {
+  display: flex;
+  gap: 10px;
+}
+
+.genre-input input {
+  flex: 1;
+}
+
+.genre-input button {
+  background: #444;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.genre-input button:hover {
+  background: #555;
+}
+
+/* Chipovi */
+.chips {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  background: #2f2f2f;
+  border: 1px solid #555;
+  border-radius: 999px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.chip-x {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.chip-x:hover {
+  color: #ff6b6b;
+}
+
+/* Dugme za submit */
+.btn {
+  background: linear-gradient(135deg, #4b8bff, #357ae8);
+  border: none;
+  color: white;
+  border-radius: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  width: 100%;
+}
+
+.btn:hover {
+  background: linear-gradient(135deg, #5c9bff, #4684f0);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(75, 139, 255, 0.35);
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Status poruke */
+.error {
+  color: #ff6b6b;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.ok {
+  color: #2ee59d;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.muted {
+  color: #aaa;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.hint {
+  color: #888;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Animacija ulaska kartice */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

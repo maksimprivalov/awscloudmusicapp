@@ -9,6 +9,7 @@ import { ContentListComponent } from './pages/content-list/content-list.componen
 import { ContentDetailComponent } from './pages/content-detail/content-detail.component';
 import { AdminUploadComponent } from './pages/admin-upload/admin-upload.component';
 import { AdminGuard } from './guards/admin-guard';
+import {CreateArtistComponent} from './pages/create-artist/create-artist.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -16,6 +17,7 @@ const routes: Routes = [
   { path: 'discover', component: DiscoverComponent },
   { path: 'content', component: ContentListComponent },
   { path: 'content/:id', component: ContentDetailComponent },
+  { path: 'admin/artists/create', component: CreateArtistComponent /*, canActivate: [AdminGuard]*/ },
   { path: 'admin/upload', component: AdminUploadComponent, canActivate: [AdminGuard] },
   { path: '', pathMatch: 'full', redirectTo: 'discover' },
   { path: '**', redirectTo: 'discover' },

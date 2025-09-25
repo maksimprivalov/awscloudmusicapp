@@ -1,7 +1,7 @@
 import { NgModule, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule} from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing-module';
 import { App } from './app';
@@ -12,6 +12,7 @@ import { AuthInterceptor } from './core/auth-interceptor';
 import { AdminUploadComponent } from './pages/admin-upload/admin-upload.component';
 import { ContentListComponent } from './pages/content-list/content-list.component';
 import { ContentDetailComponent } from './pages/content-detail/content-detail.component';
+import { CreateArtistComponent } from './pages/create-artist/create-artist.component';
 
 @NgModule({
   declarations: [
@@ -22,7 +23,8 @@ import { ContentDetailComponent } from './pages/content-detail/content-detail.co
     AdminUploadComponent,
     AdminUploadComponent,
     ContentListComponent,
-    ContentDetailComponent
+    ContentDetailComponent,
+    CreateArtistComponent
   ],
   imports: [
     BrowserModule,
@@ -30,7 +32,7 @@ import { ContentDetailComponent } from './pages/content-detail/content-detail.co
     FormsModule,
     ReactiveFormsModule,
     AppRoutingModule,
-    FormsModule
+
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },

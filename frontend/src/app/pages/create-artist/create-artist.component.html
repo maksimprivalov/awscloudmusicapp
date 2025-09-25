@@ -1,0 +1,47 @@
+<div class="page">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="card">
+    <h2>Kreiraj umetnika</h2>
+
+    <div class="field">
+      <label>Ime *</label>
+      <input type="text" formControlName="name" placeholder="npr. David Bowie">
+      <small class="error" *ngIf="form.controls['name'].touched && form.controls['name'].invalid">
+        Unesi ime (min 2 karaktera)
+      </small>
+    </div>
+
+    <div class="field">
+      <label>Biografija *</label>
+      <textarea rows="6" formControlName="bio" placeholder="Kratka biografija..."></textarea>
+      <small class="error" *ngIf="form.controls['bio'].touched && form.controls['bio'].invalid">
+        Unesi biografiju (min 10 karaktera)
+      </small>
+    </div>
+
+    <div class="field">
+      <label>Žanrovi *</label>
+      <div class="genre-input">
+        <input type="text" [(ngModel)]="genreInput" name="genreInput" placeholder="npr. rock" (keyup.enter)="addGenre()">
+        <button type="button" (click)="addGenre()">Dodaj</button>
+      </div>
+
+      <div class="chips" *ngIf="genres.length">
+        <span class="chip" *ngFor="let g of genres">
+          {{ g }}
+          <button type="button" class="chip-x" (click)="removeGenre(g)">×</button>
+        </span>
+      </div>
+      <small class="hint">Pritisni Enter ili klik na “Dodaj” za unos žanra. Minimum jedan.</small>
+    </div>
+
+    <div class="actions">
+      <button class="btn" [disabled]="submitting">Sačuvaj</button>
+    </div>
+
+    <div class="status">
+      <div class="ok" *ngIf="success">{{ success }}</div>
+      <div class="error" *ngIf="error">{{ error }}</div>
+      <div class="muted" *ngIf="submitting">Slanje…</div>
+    </div>
+  </form>
+</div>
