@@ -1,8 +1,14 @@
-<h2>Detalji</h2>
-<div *ngIf="loading">Učitavanje...</div>
-<div *ngIf="item">
-  <p><b>{{ item.name }}</b></p>
-  <p>Type: {{ item.fileType }} | Size: {{ item.fileSize }} B</p>
-  <p>Genres: {{ item.genres?.join(', ') }}</p>
-  <audio *ngIf="item.playUrl" [src]="item.playUrl" controls></audio>
+<div class="app-container">
+  <section class="card">
+    <h1>📂 Detalji</h1>
+
+    <div *ngIf="loading" class="msg info">⏳ Učitavanje...</div>
+
+    <div *ngIf="item" class="form-grid">
+      <p><b>{{ item.name }}</b></p>
+      <p><b>Type:</b> {{ item.fileType }} | <b>Size:</b> {{ item.fileSize }} B</p>
+      <p><b>Genres:</b> {{ item.genres?.join(', ') || '-' }}</p>
+      <audio *ngIf="item.playUrl" [src]="item.playUrl" controls></audio>
+    </div>
+  </section>
 </div>

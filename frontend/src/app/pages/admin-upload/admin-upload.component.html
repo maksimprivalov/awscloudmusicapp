@@ -1,25 +1,47 @@
-<h2>Admin: Upload sadržaja</h2>
-<form [formGroup]="form" (ngSubmit)="submit()">
-  <label>Naziv (name)</label>
-  <input formControlName="name" />
+<div class="app-container">
+  <section class="card">
+    <h1>🎵 Admin: Upload sadržaja</h1>
+    <p class="sub">Dodaj novu pesmu ili album</p>
 
-  <label>Žanrovi (CSV)</label>
-  <input formControlName="genres" placeholder="rock, pop" />
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+      <div class="input">
+        <label>Naziv (name)</label>
+        <input formControlName="name" placeholder="Song title" />
+      </div>
 
-  <label>Artists (CSV artistId)</label>
-  <input formControlName="artists" placeholder="uuid1, uuid2" />
+      <div class="input">
+        <label>Žanrovi (CSV)</label>
+        <input formControlName="genres" placeholder="rock, pop" />
+      </div>
 
-  <label>Album ID (opciono)</label>
-  <input formControlName="albumId" />
+      <div class="input">
+        <label>Artists (CSV artistId)</label>
+        <input formControlName="artists" placeholder="uuid1, uuid2" />
+      </div>
 
-  <label>Track #</label>
-  <input type="number" formControlName="trackNo" />
+      <div class="input">
+        <label>Album ID (opciono)</label>
+        <input formControlName="albumId" placeholder="album uuid" />
+      </div>
 
-  <label>Fajl</label>
-  <input type="file" (change)="onFileChange($event)" />
+      <div class="input">
+        <label>Track #</label>
+        <input type="number" formControlName="trackNo" />
+      </div>
 
-  <button [disabled]="uploading || form.invalid">Upload</button>
-</form>
+      <div class="input">
+        <label>Fajl</label>
+        <input type="file" (change)="onFileChange($event)" />
+      </div>
 
-<p *ngIf="status">{{ status }}</p>
-<p *ngIf="createdId">Kreirano: {{ createdId }}</p>
+      <div class="actions">
+        <button class="btn" type="submit" [disabled]="uploading || form.invalid">
+          {{ uploading ? 'Uploading…' : 'Upload' }}
+        </button>
+      </div>
+    </form>
+
+    <div *ngIf="status" class="msg info">{{ status }}</div>
+    <div *ngIf="createdId" class="msg success">✅ Kreirano: {{ createdId }}</div>
+  </section>
+</div>
