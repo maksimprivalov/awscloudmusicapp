@@ -71,6 +71,13 @@ def cors_response(status, body):
             "body": json.dumps({"error": "Serialization failure"}, ensure_ascii=False),
         }
 
+def _err(status, msg, exc=None):
+    if exc:
+        print(f"[ERROR] {msg}\n{traceback.format_exc()}")
+    payload = {"error": msg}
+    if os.getenv("STAGE", "dev") == "dev" and exc:
+        payload["details"] = str(exc)
+    return cors_response(status, payload)
 
 # =====================================================================
 #                        1) ADMIN: upload flow
@@ -567,3 +574,184 @@ def update_content(event, context):
         })
     except Exception as e:
         return cors_response(500, {"error": f"DDB update failed: {e}"})
+
+
+def delete_content(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+    content_id = (event.get("pathParameters") or {}).get("contentId")
+    if not content_id:
+        return cors_response(400, {"error": "contentId path param required"})
+
+    pk = f"CONTENT#{content_id}"
+    try:
+        # obriši SVE stavke sa tim PK (npr. METADATA, eventualne dodatne SK-ove)
+        to_delete = music_table.query(
+            KeyConditionExpression=Key("PK").eq(pk)
+        )["Items"]
+
+        if not to_delete:
+            return cors_response(404, {"error": "Content not found"})
+
+        with music_table.batch_writer() as bw:
+            for it in to_delete:
+                bw.delete_item(Key={"PK": it["PK"], "SK": it["SK"]})
+
+        return cors_response(200, {"message": "Track deleted", "contentId": content_id})
+    except Exception as e:
+        return _err(500, "DDB delete failed", e)
+
+# =============== 2) DELETE ALBUM (kaskadno briše pesme) ===
+from boto3.dynamodb.conditions import Key
+
+def delete_album(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+    album_id = (event.get("pathParameters") or {}).get("albumId")
+    if not album_id:
+        return cors_response(400, {"error": "albumId path param required"})
+
+    try:
+        # 1) Nađi sve pesme u albumu preko GSI2
+        q = music_table.query(
+            IndexName="GSI2",
+            KeyConditionExpression=Key("GSI2PK").eq(f"ALBUM#{album_id}")
+        )
+        items = q.get("Items", [])
+
+        # 2) Obriši sve stavke (sve SK-ove) za svaki CONTENT#<id>
+        pk_values = {it["PK"] for it in items}  # npr. {"CONTENT#<uuid1>", "CONTENT#<uuid2>"}
+        rows_deleted = 0
+        for pk in pk_values:
+            all_items = music_table.query(KeyConditionExpression=Key("PK").eq(pk)).get("Items", [])
+            with music_table.batch_writer() as bw:
+                for it in all_items:
+                    bw.delete_item(Key={"PK": it["PK"], "SK": it["SK"]})
+                    rows_deleted += 1
+
+        # 3) (NOVO) Obriši i sam album ako postoji kao entitet: PK="ALBUM#<albumId>"
+        album_pk = f"ALBUM#{album_id}"
+        album_items = music_table.query(KeyConditionExpression=Key("PK").eq(album_pk)).get("Items", [])
+        album_deleted_rows = 0
+        if album_items:
+            with music_table.batch_writer() as bw:
+                for it in album_items:
+                    bw.delete_item(Key={"PK": it["PK"], "SK": it["SK"]})
+                    album_deleted_rows += 1
+
+        return cors_response(200, {
+            "message": "Album deleted with tracks",
+            "albumId": album_id,
+            "tracksDeleted": len(pk_values),      # koliko pesama (PK) je obrisano
+            "rowsDeleted": rows_deleted,          # ukupno obrisanih redova za pesme
+            "albumDeleted": album_deleted_rows > 0,
+            "albumRowsDeleted": album_deleted_rows
+        })
+    except Exception as e:
+        return _err(500, "Cascade delete for album failed", e)
+
+
+# =============== 3) DELETE ARTIST (NE briše pesme) ========
+#  - uklanja umetnika iz liste 'artists' svake pesme
+#  - ako posle uklanjanja nema više artista, ostavlja prazan niz (ili placeholder)
+#  - održava GSI2: ako je mapping bio ARTIST#, apdejtuje/uklanja
+def delete_artist(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+    artist_id = (event.get("pathParameters") or {}).get("artistId")
+    if not artist_id:
+        return cors_response(400, {"error": "artistId path param required"})
+
+    try:
+        updated = 0
+
+        # 1) Pesme gde je taj umetnik primarni u GSI2 (ARTIST#<id>)
+        q1 = music_table.query(
+            IndexName="GSI2",
+            KeyConditionExpression=Key("GSI2PK").eq(f"ARTIST#{artist_id}")
+        )
+        candidate_items = q1.get("Items", [])
+
+        # 2) Fallback: sve TRACK stavke koje u listi 'artists' sadrže artist_id
+        scan = music_table.scan(
+            FilterExpression=Attr("entityType").eq("TRACK") & Attr("artists").contains(artist_id),
+            ProjectionExpression="PK, SK, artists, GSI2PK, GSI2SK, contentId"
+        )
+        candidate_items.extend(scan.get("Items", []))
+
+        # deduplikacija po (PK, SK)
+        seen = set()
+        uniq = []
+        for it in candidate_items:
+            key = (it["PK"], it["SK"])
+            if key not in seen:
+                uniq.append(it)
+                seen.add(key)
+
+        now = datetime.utcnow().isoformat()
+
+        for it in uniq:
+            pk = it["PK"]
+            # uvek radi nad METADATA zapisom
+            meta = music_table.get_item(Key={"PK": pk, "SK": "METADATA"}).get("Item")
+            if not meta:
+                continue
+
+            artists = list(meta.get("artists", []))
+            if artist_id in artists:
+                artists = [a for a in artists if a != artist_id]
+
+            # priprema update izraza
+            ean = {
+                "#artists": "artists",
+                "#updatedAt": "updatedAt",
+                "#GSI2PK": "GSI2PK",
+                "#GSI2SK": "GSI2SK"
+            }
+            eav = {
+                ":artists": artists,
+                ":updatedAt": now
+            }
+            sets = ["#artists = :artists", "#updatedAt = :updatedAt"]
+            removes = []
+
+            # ako je GSI2 bio ARTIST#, uskladi ga sa novim stanjem
+            gsi2pk = meta.get("GSI2PK", "")
+            if gsi2pk.startswith("ARTIST#"):
+                if artists:
+                    eav[":g2pk"] = f"ARTIST#{artists[0]}"
+                    eav[":g2sk"] = f"TRACK#{now}"
+                    sets += ["#GSI2PK = :g2pk", "#GSI2SK = :g2sk"]
+                else:
+                    removes += ["#GSI2PK", "#GSI2SK"]
+
+            update_expr = []
+            if sets:
+                update_expr.append("SET " + ", ".join(sets))
+            if removes:
+                update_expr.append("REMOVE " + ", ".join(removes))
+
+            music_table.update_item(
+                Key={"PK": pk, "SK": "METADATA"},
+                UpdateExpression=" ".join(update_expr),
+                ExpressionAttributeNames=ean,
+                ExpressionAttributeValues=eav,
+                ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)"
+            )
+            updated += 1
+
+        # --- posle što su SVE pesme ažurirane, obriši zapis u Artists tabeli ---
+        ddb = boto3.resource("dynamodb")
+        artists_table_name = os.getenv("ARTISTS_TABLE", "Artists")
+        artists_table = ddb.Table(artists_table_name)
+        artists_table.delete_item(Key={"artistId": artist_id})
+
+        return cors_response(200, {
+            "message": "Artist deleted (references updated)",
+            "artistId": artist_id,
+            "tracksUpdated": updated,
+            "artistTableDeleted": True
+        })
+
+    except Exception as e:
+        return _err(500, "Delete artist failed", e)
