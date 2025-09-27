@@ -1,8 +1,17 @@
-# utils/cors.py
 import os
 import json
+from decimal import Decimal
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "http://localhost:4200")
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            if obj % 1 == 0:
+                return int(obj)
+            else:
+                return float(obj)
+        return super(DecimalEncoder, self).default(obj)
 
 DEFAULT_HEADERS = {
     "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
@@ -15,7 +24,7 @@ def response(status: int, body):
     return {
         "statusCode": status,
         "headers": DEFAULT_HEADERS,
-        "body": json.dumps(body) if not isinstance(body, str) else body,
+        "body": json.dumps(body, cls=DecimalEncoder) if not isinstance(body, str) else body,
     }
 
 def ok(body):         return response(200, body)

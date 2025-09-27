@@ -123,17 +123,28 @@ def create_content(event, context):
 #                2) LIST / GET 
 # =====================================================================
 def list_content(event, context):
+    try:
+        resp = music_table.scan(
+            FilterExpression=Attr("PK").begins_with("CONTENT#")
+        )
+        items = resp.get("Items", [])
 
-    resp = music_table.scan(Limit=50)
-    items = resp.get("Items", [])
+        for it in items:
+            key = it.get("s3Key")
+            if key:
+                it["playUrl"] = s3.generate_presigned_url(
+                    "get_object", Params={"Bucket": BUCKET, "Key": key}, ExpiresIn=3600
+                )
+            if "contentId" not in it and "PK" in it:
+                it["contentId"] = it["PK"].split("#", 1)[1]
 
-    for it in items:
-        key = it.get("s3Key")
-        if key:
-            it["playUrl"] = s3.generate_presigned_url(
-                "get_object", Params={"Bucket": BUCKET, "Key": key}, ExpiresIn=3600
-            )
-    return cors_response(200, items)
+        return cors_response(200, items)
+
+    except Exception as e:
+        import traceback
+        print("list_content ERROR:", traceback.format_exc())
+        return cors_response(500, {"error": str(e)})
+
 
 def get_content(event, context):
     content_id = (event.get("pathParameters") or {}).get("id")
