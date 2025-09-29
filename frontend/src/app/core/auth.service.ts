@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import {HttpClient, HttpHeaders} from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { tap } from 'rxjs/operators';
@@ -62,7 +62,6 @@ export class AuthService {
   logout() {
     localStorage.removeItem(this.tokenKey);
   }
-
 
   getClaims(): any | null {
     const tok = this.getToken();

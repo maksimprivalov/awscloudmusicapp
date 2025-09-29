@@ -13,6 +13,7 @@ import { AdminUploadComponent } from './pages/admin-upload/admin-upload.componen
 import { ContentListComponent } from './pages/content-list/content-list.component';
 import { ContentDetailComponent } from './pages/content-detail/content-detail.component';
 import { CreateArtistComponent } from './pages/create-artist/create-artist.component';
+import {AlbumsTableComponent} from './pages/albums-table/albums-table.component';
 
 @NgModule({
   declarations: [
@@ -24,7 +25,8 @@ import { CreateArtistComponent } from './pages/create-artist/create-artist.compo
     AdminUploadComponent,
     ContentListComponent,
     ContentDetailComponent,
-    CreateArtistComponent
+    CreateArtistComponent,
+    AlbumsTableComponent
   ],
   imports: [
     BrowserModule,

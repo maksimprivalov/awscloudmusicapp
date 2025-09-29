@@ -10,11 +10,13 @@ import { ContentDetailComponent } from './pages/content-detail/content-detail.co
 import { AdminUploadComponent } from './pages/admin-upload/admin-upload.component';
 import { AdminGuard } from './guards/admin-guard';
 import {CreateArtistComponent} from './pages/create-artist/create-artist.component';
+import {AlbumsTableComponent} from './pages/albums-table/albums-table.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
   { path: 'discover', component: DiscoverComponent },
+  { path: 'album-table', component: AlbumsTableComponent },
   { path: 'content', component: ContentListComponent },
   { path: 'content/:id', component: ContentDetailComponent },
   { path: 'admin/artists/create', component: CreateArtistComponent /*, canActivate: [AdminGuard]*/ },
