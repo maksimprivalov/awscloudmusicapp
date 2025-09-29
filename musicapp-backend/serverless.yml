@@ -254,6 +254,31 @@ functions:
             headers: [ Content-Type, Authorization ]
             allowCredentials: true
 
+  getArtist:
+    handler: handlers/content.list_artists
+    events:
+      - http:
+          path: artists
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  updateArtist:
+    handler: handlers/content.update_artist
+    events:
+      - http:
+          path: admin/artist/update
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
 resources:
   Resources:
     GatewayResponseDefault4XX:
