@@ -5,6 +5,7 @@ from typing import Optional, Dict
 from boto3.dynamodb.conditions import Key, Attr
 from utils.cors import response as cors_response
 from decimal import Decimal
+from urllib.parse import unquote
 
 # ===== AWS clients & env =====
 s3 = boto3.client("s3")
@@ -79,9 +80,7 @@ def _err(status, msg, exc=None):
         payload["details"] = str(exc)
     return cors_response(status, payload)
 
-# =====================================================================
 #                        1) ADMIN: upload flow
-# =====================================================================
 def get_upload_url(event, context):
     # только админ
     if not _is_admin(event):
@@ -163,9 +162,7 @@ def create_content(event, context):
     music_table.put_item(Item=item)
     return cors_response(201, {"message": "Content created", "contentId": content_id})
 
-# =====================================================================
-#                2) LIST / GET 
-# =====================================================================
+#                2) LIST / GET
 def list_content(event, context):
     try:
         resp = music_table.scan(
@@ -207,9 +204,7 @@ def get_content(event, context):
         )
     return cors_response(200, item)
 
-# =====================================================================
 #                       3) Discover (GSI1)
-# =====================================================================
 def discover(event, context):
     try:
         params = event.get("queryStringParameters") or {}
@@ -273,9 +268,7 @@ def discover(event, context):
             body["detail"] = str(e)
         return cors_response(500, body)
 
-# =====================================================================
 #                   4) Seed / Reset (admin)
-# =====================================================================
 def seed(event, context):
     import time, logging
     logging.getLogger().setLevel("INFO")
@@ -355,20 +348,26 @@ def seed(event, context):
             })
 
             # songs
+            # tracks (zamena za SONG)
             for t in range(1, songs_per_album + 1):
+                track_id = str(uuid.uuid4())
                 album_song_items.append({
-                    "PK": {"S": f"SONG#{str(uuid.uuid4())}"},
-                    "SK": {"S": "SONG"},
-                    "entityType": {"S": "SONG"},
-                    "name": {"S": f"Song {a+1}-{t}"},
+                    "PK": {"S": f"CONTENT#{track_id}"},
+                    "SK": {"S": "METADATA"},
+                    "entityType": {"S": "TRACK"},
+                    "contentId": {"S": track_id},
+
+                    "name": {"S": f"Song {a + 1}-{t}"},
                     "trackNo": {"N": str(t)},
                     "albumId": {"S": album_id},
                     "artistId": {"S": artist_id},
                     "primaryGenre": {"S": g},
+
                     "GSI1PK": {"S": f"GENRE#{g}"},
-                    "GSI1SK": {"S": f"TYPE#SONG#NAME#song-{a+1}-{t}"},
+                    "GSI1SK": {"S": f"TYPE#TRACK#NAME#song-{a + 1}-{t}"},
+
                     "GSI2PK": {"S": f"ALBUM#{album_id}"},
-                    "GSI2SK": {"S": f"TRACK#{str(t).zfill(2)}"},
+                    "GSI2SK": {"S": f"TRACK#{str(t).zfill(3)}"},
                 })
 
         for i in range(0, len(album_song_items), 25):
@@ -441,152 +440,6 @@ def reset_music(event, context):
             body["detail"] = str(e)
         return cors_response(500, body)
 
-def update_content(event, context):
-    # samo admin
-    if not _is_admin(event):
-        return cors_response(403, {"error": "Admins only"})
-
-    body = json.loads(event.get("body") or "{}")
-    content_id = body.get("contentId")
-    if not content_id:
-        return cors_response(400, {"error": "contentId is required"})
-
-    # Učitaj postojeći zapis
-    pk = f"CONTENT#{content_id}"
-    try:
-        existing = music_table.get_item(Key={"PK": pk, "SK": "METADATA"}).get("Item")
-    except Exception as e:
-        return cors_response(500, {"error": f"DDB get_item failed: {e}"})
-
-    if not existing:
-        return cors_response(404, {"error": "Content not found"})
-
-    # Polja koja dozvoljavamo da se menjaju (sva opciona)
-    name = body.get("name")
-    description = body.get("description")
-    tags = body.get("tags")
-    genres = body.get("genres")
-    artists = body.get("artists")
-    album_id = body.get("albumId") if "albumId" in body else None  # prisustvo ključa znači “postavi čak i na null”
-    track_no = body.get("trackNo") if "trackNo" in body else None
-    new_s3_key = body.get("s3Key")
-
-    # Dinamički build update izraza
-    update_sets = []
-    update_removes = []
-    ean = {}  # ExpressionAttributeNames
-    eav = {}  # ExpressionAttributeValues
-
-    now = datetime.utcnow().isoformat()
-
-    def set_attr(name_key, attr_name, value):
-        ean[f"#{name_key}"] = attr_name
-        val_key = f":{attr_name.replace('.', '_')}"
-        eav[val_key] = value
-        update_sets.append(f"#{name_key} = {val_key}")
-
-    # 1) Prost(iji) meta-podaci
-    if name is not None:
-        set_attr("name", "name", name)
-    if description is not None:
-        set_attr("description", "description", description)
-    if tags is not None:
-        set_attr("tags", "tags", tags)
-
-    # 2) Genres i GSI1
-    if genres is not None:
-        set_attr("genres", "genres", genres)
-        gsi1pk_val = f"GENRE#{genres[0]}" if genres else "GENRE#unknown"
-        set_attr("GSI1PK", "GSI1PK", gsi1pk_val)
-        # (ostavljamo postojeći GSI1SK; opcionalno bi moglo da prati updatedAt)
-
-    # 3) Artists / Album i GSI2 (mutual exclusive prioritet: album > artist)
-    #    - Ako eksplicitno dođe albumId (uklj. None), postavimo/obrišemo album mapping.
-    if "albumId" in body:
-        if album_id is not None:
-            set_attr("albumId", "albumId", album_id)
-            if "trackNo" in body:
-                # ako nije poslat, ne diramo postojeći
-                set_attr("trackNo", "trackNo", track_no if track_no is not None else 0)
-                z = str(track_no or 0).zfill(3)
-            else:
-                z = str(existing.get("trackNo", 0)).zfill(3)
-            set_attr("GSI2PK", "GSI2PK", f"ALBUM#{album_id}")
-            set_attr("GSI2SK", "GSI2SK", f"TRACK#{z}")
-        else:
-            # uklanjamo album mapping
-            update_removes += ["#albumId", "#GSI2PK", "#GSI2SK"]
-            ean["#albumId"] = "albumId"
-            ean["#GSI2PK"] = "GSI2PK"
-            ean["#GSI2SK"] = "GSI2SK"
-
-    # Ako nije menjan album, ali su menjani artists – možemo postaviti ARTIST GSI2
-    if ("albumId" not in body) and (artists is not None):
-        set_attr("artists", "artists", artists)
-        if artists and len(artists) > 0:
-            set_attr("GSI2PK", "GSI2PK", f"ARTIST#{artists[0]}")
-            # Sort ključ možemo voditi po vremenu izmene (ili zadržati stari)
-            set_attr("GSI2SK", "GSI2SK", f"TRACK#{now}")
-        else:
-            # nema više artists → ukloni GSI2 mapping ako je bio artistički
-            update_removes += ["#GSI2PK", "#GSI2SK"]
-            ean["#GSI2PK"] = "GSI2PK"
-            ean["#GSI2SK"] = "GSI2SK"
-
-    # 4) trackNo nezavisno (ako nije već pokriven grane gore)
-    if ("trackNo" in body) and ("albumId" not in body):
-        # ažuriramo trackNo polje, ali GSI2SK za album menjamo samo ako je ALBUM mapping već prisutan
-        set_attr("trackNo", "trackNo", track_no if track_no is not None else 0)
-        if existing.get("GSI2PK", "").startswith("ALBUM#"):
-            z = str(track_no or 0).zfill(3)
-            set_attr("GSI2SK", "GSI2SK", f"TRACK#{z}")
-
-    # 5) Promena fajla (novi s3Key) → povuci meta iz S3
-    if new_s3_key is not None:
-        try:
-            head = s3.head_object(Bucket=BUCKET, Key=new_s3_key)
-            file_type = head.get("ContentType", "application/octet-stream")
-            file_size = head["ContentLength"]
-            last_modified = head["LastModified"].isoformat()
-        except Exception as e:
-            return cors_response(400, {"error": f"S3 object not found or not uploaded yet: {e}"})
-
-        set_attr("s3Key", "s3Key", new_s3_key)
-        set_attr("fileType", "fileType", file_type)
-        set_attr("fileSize", "fileSize", file_size)
-        set_attr("fileLastModified", "fileLastModified", last_modified)
-        # fileName iz key-a
-        set_attr("fileName", "fileName", new_s3_key.split("/")[-1])
-
-    # 6) Uvek ažuriramo updatedAt
-    set_attr("updatedAt", "updatedAt", now)
-
-    if not update_sets and not update_removes:
-        return cors_response(400, {"error": "No updatable fields provided"})
-
-    update_expr = []
-    if update_sets:
-        update_expr.append("SET " + ", ".join(update_sets))
-    if update_removes:
-        update_expr.append("REMOVE " + ", ".join(update_removes))
-
-    try:
-        resp = music_table.update_item(
-            Key={"PK": pk, "SK": "METADATA"},
-            UpdateExpression=" ".join(update_expr),
-            ExpressionAttributeNames=ean or None,
-            ExpressionAttributeValues=eav or None,
-            ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
-            ReturnValues="ALL_NEW",
-        )
-        return cors_response(200, {
-            "message": "Content updated",
-            "content": resp.get("Attributes", {})
-        })
-    except Exception as e:
-        return cors_response(500, {"error": f"DDB update failed: {e}"})
-
-
 def delete_content(event, context):
     if not _is_admin(event):
         return cors_response(403, {"error": "Admins only"})
@@ -612,8 +465,6 @@ def delete_content(event, context):
     except Exception as e:
         return _err(500, "DDB delete failed", e)
 
-# =============== 2) DELETE ALBUM (kaskadno briše pesme) ===
-from boto3.dynamodb.conditions import Key
 
 def delete_album(event, context):
     if not _is_admin(event):
@@ -622,27 +473,33 @@ def delete_album(event, context):
     if not album_id:
         return cors_response(400, {"error": "albumId path param required"})
 
+    album_id = unquote(album_id)
+    if album_id.startswith("ALBUM#"):
+        album_id = album_id.split("#", 1)[1]
+
     try:
-        # 1) Nađi sve pesme u albumu preko GSI2
         q = music_table.query(
             IndexName="GSI2",
             KeyConditionExpression=Key("GSI2PK").eq(f"ALBUM#{album_id}")
         )
         items = q.get("Items", [])
 
-        # 2) Obriši sve stavke (sve SK-ove) za svaki CONTENT#<id>
-        pk_values = {it["PK"] for it in items}  # npr. {"CONTENT#<uuid1>", "CONTENT#<uuid2>"}
+        pk_values = {it["PK"] for it in items}
         rows_deleted = 0
         for pk in pk_values:
-            all_items = music_table.query(KeyConditionExpression=Key("PK").eq(pk)).get("Items", [])
+            all_items = music_table.query(
+                KeyConditionExpression=Key("PK").eq(pk)
+            ).get("Items", [])
             with music_table.batch_writer() as bw:
                 for it in all_items:
                     bw.delete_item(Key={"PK": it["PK"], "SK": it["SK"]})
                     rows_deleted += 1
 
-        # 3) (NOVO) Obriši i sam album ako postoji kao entitet: PK="ALBUM#<albumId>"
+        # obriši i sam album, ako postoji kao entitet
         album_pk = f"ALBUM#{album_id}"
-        album_items = music_table.query(KeyConditionExpression=Key("PK").eq(album_pk)).get("Items", [])
+        album_items = music_table.query(
+            KeyConditionExpression=Key("PK").eq(album_pk)
+        ).get("Items", [])
         album_deleted_rows = 0
         if album_items:
             with music_table.batch_writer() as bw:
@@ -653,8 +510,8 @@ def delete_album(event, context):
         return cors_response(200, {
             "message": "Album deleted with tracks",
             "albumId": album_id,
-            "tracksDeleted": len(pk_values),      # koliko pesama (PK) je obrisano
-            "rowsDeleted": rows_deleted,          # ukupno obrisanih redova za pesme
+            "tracksDeleted": len(pk_values),
+            "rowsDeleted": rows_deleted,
             "albumDeleted": album_deleted_rows > 0,
             "albumRowsDeleted": album_deleted_rows
         })
@@ -662,10 +519,8 @@ def delete_album(event, context):
         return _err(500, "Cascade delete for album failed", e)
 
 
+
 # =============== 3) DELETE ARTIST (NE briše pesme) ========
-#  - uklanja umetnika iz liste 'artists' svake pesme
-#  - ako posle uklanjanja nema više artista, ostavlja prazan niz (ili placeholder)
-#  - održava GSI2: ako je mapping bio ARTIST#, apdejtuje/uklanja
 def delete_artist(event, context):
     if not _is_admin(event):
         return cors_response(403, {"error": "Admins only"})
@@ -756,6 +611,7 @@ def delete_artist(event, context):
         artists_table_name = os.getenv("ARTISTS_TABLE", "Artists")
         artists_table = ddb.Table(artists_table_name)
         artists_table.delete_item(Key={"artistId": artist_id})
+        music_table.delete_item(Key={"PK": f"ARTIST#{artist_id}", "SK": "ARTIST"})
 
         return cors_response(200, {
             "message": "Artist deleted (references updated)",
@@ -766,3 +622,354 @@ def delete_artist(event, context):
 
     except Exception as e:
         return _err(500, "Delete artist failed", e)
+
+def create_album(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except Exception:
+        return cors_response(400, {"error": "Invalid JSON body"})
+
+    album_id      = (body.get("albumId") or "").strip()
+    name          = (body.get("name") or "").strip()
+    primary_genre = (body.get("primaryGenre") or "").strip().lower()
+
+    # opciona polja
+    artist_id    = (body.get("artistId") or "").strip() or None
+    year         = body.get("year")               # int | None
+    description  = (body.get("description") or "").strip() or None
+    cover_s3_key = (body.get("coverS3Key") or "").strip() or None
+
+    if not album_id or not name or not primary_genre:
+        return cors_response(400, {"error": "albumId, name, primaryGenre are required"})
+
+    # pripremi stavku
+    now = datetime.utcnow().isoformat()
+
+    def _slug(s: str) -> str:
+        return "-".join(s.lower().split())
+
+    item = {
+        "PK": f"ALBUM#{album_id}",
+        "SK": "ALBUM",
+        "entityType": "ALBUM",
+        "albumId": album_id,
+        "name": name,
+        "primaryGenre": primary_genre,
+        "artistId": artist_id,         # može biti None
+        "year": year,                  # može biti None (int ili Decimal)
+        "description": description,    # može biti None
+        "coverS3Key": cover_s3_key,    # može biti None (npr. albums/<id>/cover.jpg)
+        "createdAt": now,
+        "updatedAt": now,
+        # GSI1: po žanru, listamo albume po imenu
+        "GSI1PK": f"GENRE#{primary_genre}",
+        "GSI1SK": f"TYPE#ALBUM#NAME#{_slug(name)}",
+    }
+
+    # ukloni None vrednosti (DynamoDB ne prima null ako ne koristimo explicitni NULL tip)
+    item = {k: v for k, v in item.items() if v is not None}
+
+    try:
+        music_table.put_item(
+            Item=item,
+            ConditionExpression="attribute_not_exists(PK) AND attribute_not_exists(SK)"
+        )
+        if cover_s3_key:
+            try:
+                item["coverUrl"] = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": BUCKET, "Key": cover_s3_key},
+                    ExpiresIn=3600
+                )
+            except Exception:
+                pass
+
+        return cors_response(201, {"message": "Album created", "albumId": album_id, "album": item})
+    except Exception as e:
+        msg = str(e)
+        if "ConditionalCheckFailed" in msg:
+            return cors_response(409, {"error": "Album already exists"})
+        return cors_response(500, {"error": f"DDB put failed: {msg}"})
+
+
+def _norm_album_id(raw: str) -> str:
+    a = unquote(raw or "")
+    if a.startswith("ALBUM#"):
+        a = a.split("#", 1)[1]
+    return a
+
+def update_album(event, context):
+    # samo admin
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except Exception:
+        return cors_response(400, {"error": "Invalid JSON body"})
+
+    album_id = (body.get("albumId") or "").strip()
+    if not album_id:
+        return cors_response(400, {"error": "albumId is required"})
+
+    # optional meta polja
+    name          = body.get("name")            # string?
+    primary_genre = body.get("primaryGenre")    # string?
+    description   = body.get("description")     # string?
+    artists       = body.get("artists")         # list[str]?
+    add_cids      = body.get("addContentIds")   # list[str]
+    rem_cids      = body.get("removeContentIds")# list[str]
+    resequence    = bool(body.get("resequence", False))
+
+    if artists is not None and not isinstance(artists, list):
+        return cors_response(400, {"error": "artists must be array of strings"})
+    if add_cids is not None and not isinstance(add_cids, list):
+        return cors_response(400, {"error": "addContentIds must be array of strings"})
+    if rem_cids is not None and not isinstance(rem_cids, list):
+        return cors_response(400, {"error": "removeContentIds must be array of strings"})
+
+    add_cids = [c for c in (add_cids or []) if isinstance(c, str) and c.strip()]
+    rem_cids = [c for c in (rem_cids or []) if isinstance(c, str) and c.strip()]
+    artists  = [a for a in (artists  or []) if isinstance(a, str) and a.strip()]
+
+    now = datetime.utcnow().isoformat()
+
+    # 1) UPDATE meta zapisa albuma (ako postoji) → PK="ALBUM#<albumId>", SK="ALBUM"
+    album_pk = f"ALBUM#{album_id}"
+    try:
+        album_meta = music_table.get_item(Key={"PK": album_pk, "SK": "ALBUM"}).get("Item")
+        if album_meta:
+            update_sets, ean, eav = [], {}, {}
+            def s(nk, an, val):
+                ean[f"#{nk}"] = an; eav[f":{an}"] = val; update_sets.append(f"#{nk} = :{an}")
+            if name is not None:          s("name", "name", name)
+            if primary_genre is not None:
+                music_table.update_item(
+                    Key={"PK": album_pk, "SK": "ALBUM"},
+                    UpdateExpression="SET #pg=:g, #g1pk=:gpk, #updatedAt=:now",
+                    ExpressionAttributeNames={"#pg": "primaryGenre", "#g1pk": "GSI1PK", "#updatedAt": "updatedAt"},
+                    ExpressionAttributeValues={":g": primary_genre, ":gpk": f"GENRE#{primary_genre.strip().lower()}",
+                                               ":now": now},
+                    ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)"
+                )
+
+            if description is not None:   s("description", "description", description)
+            if artists is not None:       s("artists", "artists", artists)
+            s("updatedAt", "updatedAt", now)
+
+            if update_sets:
+                music_table.update_item(
+                    Key={"PK": album_pk, "SK": "ALBUM"},
+                    UpdateExpression="SET " + ", ".join(update_sets),
+                    ExpressionAttributeNames=ean,
+                    ExpressionAttributeValues=eav,
+                    ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)"
+                )
+        else:
+            # ako nema meta a korisnik šalje bar neki meta podatak — napravi meta red
+            if any(v is not None for v in [name, primary_genre, description, artists]):
+                put_row = {
+                    "PK": album_pk, "SK": "ALBUM",
+                    "entityType": "ALBUM",
+                    "name": name or album_id,
+                    "primaryGenre": (primary_genre or "unknown"),
+                    "description": description or "",
+                    "artists": artists or [],
+                    "createdAt": now, "updatedAt": now,
+                    "GSI1PK": f"GENRE#{(primary_genre or 'unknown')}",
+                    "GSI1SK": f"TYPE#ALBUM#NAME#{(name or album_id).lower().replace(' ','-')}",
+                }
+                music_table.put_item(Item=put_row)
+    except Exception as e:
+        return _err(500, "Album meta update failed", e)
+
+    # 2) DODAJ pesme u album: setuj GSI2PK/ GSI2SK i albumId na METADATA
+    added = 0
+    for cid in add_cids:
+        pk = f"CONTENT#{cid}"
+        # proveri da METADATA postoji
+        meta = music_table.get_item(Key={"PK": pk, "SK": "METADATA"}).get("Item")
+        if not meta:
+            continue
+
+        track_no = int(meta.get("trackNo", 0) or 0)
+        try:
+            music_table.update_item(
+                Key={"PK": pk, "SK": "METADATA"},
+                UpdateExpression="SET #albumId=:aid, #G2PK=:g2pk, #G2SK=:g2sk, #updatedAt=:now",
+                ExpressionAttributeNames={
+                    "#albumId": "albumId", "#G2PK": "GSI2PK", "#G2SK": "GSI2SK", "#updatedAt": "updatedAt"
+                },
+                ExpressionAttributeValues={
+                    ":aid": album_id, ":g2pk": f"ALBUM#{album_id}",
+                    ":g2sk": f"TRACK#{str(track_no).zfill(3)}",
+                    ":now": now
+                },
+                ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)"
+            )
+            added += 1
+        except Exception:
+            pass
+
+    # 3) UKLONI pesme iz albuma (skini albumId i GSI2* ako je ALBUM#)
+    removed = 0
+    for cid in rem_cids:
+        pk = f"CONTENT#{cid}"
+        meta = music_table.get_item(Key={"PK": pk, "SK": "METADATA"}).get("Item")
+        if not meta:
+            continue
+        if str(meta.get("albumId") or "") != album_id:
+            continue
+        try:
+            music_table.update_item(
+                Key={"PK": pk, "SK": "METADATA"},
+                UpdateExpression="REMOVE #albumId, #G2PK, #G2SK SET #updatedAt=:now",
+                ExpressionAttributeNames={
+                    "#albumId": "albumId", "#G2PK": "GSI2PK", "#G2SK": "GSI2SK", "#updatedAt": "updatedAt"
+                },
+                ExpressionAttributeValues={":now": now},
+                ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)"
+            )
+            removed += 1
+        except Exception:
+            pass
+
+    add_art = body.get("addArtists") or []
+    rem_art = body.get("removeArtists") or []
+
+    if (add_art or rem_art) and album_meta:
+        cur = list(album_meta.get("artists", []))
+        # dodaj (bez duplikata)
+        for a in add_art:
+            a = (a or "").strip()
+            if a and a not in cur:
+                cur.append(a)
+        # ukloni
+        if rem_art:
+            cur = [a for a in cur if a not in rem_art]
+
+        music_table.update_item(
+            Key={"PK": album_pk, "SK": "ALBUM"},
+            UpdateExpression="SET #artists=:a, #updatedAt=:now",
+            ExpressionAttributeNames={"#artists": "artists", "#updatedAt": "updatedAt"},
+            ExpressionAttributeValues={":a": cur, ":now": now},
+            ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)"
+        )
+
+    resequenced = 0
+    if resequence:
+        q = music_table.query(
+            IndexName="GSI2",
+            KeyConditionExpression=Key("GSI2PK").eq(f"ALBUM#{album_id}")
+        )
+        tracks = q.get("Items", [])
+        def safe(x, k, d=0):
+            v = x.get(k)
+            if isinstance(v, Decimal): v = int(v) if v % 1 == 0 else float(v)
+            return v if v is not None else d
+        tracks.sort(key=lambda t: (safe(t,"trackNo"), t.get("name",""), t.get("contentId","")))
+        for i, it in enumerate(tracks, start=1):
+            pk = it["PK"]
+            try:
+                music_table.update_item(
+                    Key={"PK": pk, "SK": "METADATA"},
+                    UpdateExpression="SET #trackNo=:tn, #G2SK=:g2sk, #updatedAt=:now",
+                    ExpressionAttributeNames={"#trackNo":"trackNo", "#G2SK":"GSI2SK", "#updatedAt":"updatedAt"},
+                    ExpressionAttributeValues={":tn": i, ":g2sk": f"TRACK#{str(i).zfill(3)}", ":now": now}
+                )
+                resequenced += 1
+            except Exception:
+                pass
+
+    return cors_response(200, {
+        "message": "Album updated",
+        "albumId": album_id,
+        "added": added,
+        "removed": removed,
+        "resequenced": resequenced
+    })
+
+# --- GET ALBUM META ---
+def get_album(event, context):
+    try:
+        album_id = (event.get("pathParameters") or {}).get("albumId")
+        if not album_id:
+            return cors_response(400, {"error": "albumId path param required"})
+
+        # 1) Probaj direktno meta-zapis ALBUM#<id> / SK=ALBUM
+        pk = f"ALBUM#{album_id}"
+        resp = music_table.get_item(Key={"PK": pk, "SK": "ALBUM"})
+        meta = resp.get("Item")
+
+        if meta:
+            out = {
+                "albumId": album_id,
+                "name": meta.get("name"),
+                "primaryGenre": meta.get("primaryGenre"),
+                "genres": meta.get("genres") or ([] if not meta.get("primaryGenre") else [meta.get("primaryGenre")]),
+                "artists": meta.get("artists") or [],
+                "description": meta.get("description") or meta.get("bio") or meta.get("desc"),
+            }
+            return cors_response(200, out)
+
+        # 2) Fallback: izvedi iz pesama u albumu (GSI2: GSI2PK = ALBUM#<id>)
+        q = music_table.query(
+            IndexName="GSI2",
+            KeyConditionExpression=Key("GSI2PK").eq(f"ALBUM#{album_id}")
+        )
+        tracks = q.get("Items", [])
+
+        if not tracks:
+            # nema ni meta ni pesama
+            return cors_response(404, {"error": "Album not found"})
+
+        # Izvedi polja iz traka
+        def unique(seq):
+            seen = set(); out = []
+            for x in seq:
+                if x is None: continue
+                if x not in seen:
+                    seen.add(x); out.append(x)
+            return out
+
+        name_candidates = [t.get("albumName") for t in tracks if t.get("albumName")]
+        album_name = name_candidates[0] if name_candidates else None
+
+        from collections import Counter
+        g_list = []
+        for t in tracks:
+            # ako je na traci 'genres' lista – dodaj sve; ako je single 'primaryGenre' – dodaj i to
+            if isinstance(t.get("genres"), list):
+                g_list.extend([g for g in t["genres"] if isinstance(g, str)])
+            if isinstance(t.get("primaryGenre"), str):
+                g_list.append(t["primaryGenre"])
+        primary_genre = None
+        genres_sorted = []
+        if g_list:
+            cnt = Counter([g.strip().lower() for g in g_list if g])
+            primary_genre = cnt.most_common(1)[0][0]
+            genres_sorted = [g for g, _ in cnt.most_common()]
+
+        artists_merged = []
+        for t in tracks:
+            if isinstance(t.get("artists"), list):
+                artists_merged.extend([a for a in t["artists"] if isinstance(a, str)])
+            elif isinstance(t.get("artistId"), str):
+                artists_merged.append(t["artistId"])
+        artists_uniq = unique(artists_merged)
+
+        out = {
+            "albumId": album_id,
+            "name": album_name,
+            "primaryGenre": primary_genre,
+            "genres": genres_sorted or ([primary_genre] if primary_genre else []),
+            "artists": artists_uniq,
+            "description": None,
+        }
+        return cors_response(200, out)
+
+    except Exception as e:
+        return _err(500, "Get album failed", e)
