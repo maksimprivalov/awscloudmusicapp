@@ -1,0 +1,113 @@
+<div class="app-container">
+  <section class="card" style="width:min(1080px,96vw);">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div>
+        <h1 style="margin:0;">Artists</h1>
+        <p class="sub" style="margin:4px 0 0;">View / edit / delete artists</p>
+      </div>
+      <button class="btn secondary" (click)="refresh()" [disabled]="loading">
+        {{ loading ? 'Loading…' : 'Refresh' }}
+      </button>
+    </div>
+
+    <div *ngIf="error" class="msg error" style="margin-top:12px;">{{ error }}</div>
+    <div *ngIf="loading" class="msg info" style="margin-top:12px;">Loading artists…</div>
+
+    <div *ngIf="!loading && artists?.length" style="margin-top:16px; overflow:auto; border:1px solid #e5e7eb; border-radius:12px;">
+      <table style="width:100%; border-collapse:separate; border-spacing:0;">
+        <thead>
+        <tr style="background:#f8fafc;">
+          <th style="text-align:left; padding:12px 14px; font-size:12px; color:#64748b; border-bottom:1px solid #e5e7eb;">Artist ID</th>
+          <th style="text-align:left; padding:12px 14px; font-size:12px; color:#64748b; border-bottom:1px solid #e5e7eb;">Name</th>
+          <th style="text-align:left; padding:12px 14px; font-size:12px; color:#64748b; border-bottom:1px solid #e5e7eb;">Bio</th>
+          <th style="text-align:left; padding:12px 14px; font-size:12px; color:#64748b; border-bottom:1px solid #e5e7eb;">Genres</th>
+          <th style="text-align:right; padding:12px 14px; font-size:12px; color:#64748b; border-bottom:1px solid #e5e7eb;">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let a of artists; trackBy: trackById" style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:14px;">
+            <span style="display:inline-block; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; background:#f1f5f9; border:1px solid #e2e8f0; padding:3px 8px; border-radius:8px;">
+              {{ a.artistId }}
+            </span>
+          </td>
+          <td style="padding:14px; color:#334155;">{{ a.name }}</td>
+          <td style="padding:14px; color:#64748b; max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ a.bio || '—' }}
+          </td>
+          <td style="padding:14px; color:#334155;">
+            <ng-container *ngIf="a.genres?.length; else dash">
+              <span *ngFor="let g of a.genres" style="display:inline-block; margin-right:6px; padding:2px 8px; border-radius:999px; font-size:12px; background:#eef2ff; border:1px solid #e0e7ff; color:#4f46e5;">
+                {{ g }}
+              </span>
+            </ng-container>
+            <ng-template #dash>—</ng-template>
+          </td>
+          <td style="padding:14px; text-align:right;">
+            <div style="display:inline-flex; gap:8px;">
+              <button class="btn" style="border:1px solid #c7d2fe; background:linear-gradient(180deg,#eef2ff,#e0e7ff); color:#3730a3;"
+                      (click)="openEdit(a)">Edit</button>
+              <button class="btn" [disabled]="deleting.has(a.artistId)"
+                      style="border:1px solid #fecaca; background:linear-gradient(180deg,#fee2e2,#fecaca); color:#991b1b;"
+                      (click)="onDelete(a)">
+                {{ deleting.has(a.artistId) ? 'Deleting…' : 'Delete' }}
+              </button>
+            </div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="!loading && (!artists || !artists.length)" class="msg info" style="margin-top:16px;">
+      No artists yet.
+    </div>
+  </section>
+</div>
+
+<!-- ===== EDIT MODAL ===== -->
+<div *ngIf="editing" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.45); z-index:50;">
+  <div class="card" style="width:min(760px,94vw); max-height:92vh; overflow:auto; padding:18px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div>
+        <h2 style="margin:0;">Edit artist</h2>
+        <p class="sub" style="margin:4px 0 0;">Artist ID:
+          <strong>{{ editing?.artistId }}</strong></p>
+      </div>
+      <button class="btn secondary" (click)="closeEdit()">Close</button>
+    </div>
+
+    <div *ngIf="modalError" class="msg error" style="margin-top:12px;">{{ modalError }}</div>
+
+    <form (ngSubmit)="saveEdit()" style="display:grid; gap:12px; margin-top:12px;">
+      <div class="input">
+        <label>Name</label>
+        <input type="text" [(ngModel)]="eName" name="name"
+               style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+      </div>
+
+      <div class="input">
+        <label>Bio</label>
+        <textarea rows="3" [(ngModel)]="eBio" name="bio"
+                  style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;"></textarea>
+      </div>
+
+      <div class="input">
+        <label>Genres</label>
+        <select multiple [(ngModel)]="eGenres" name="genres"
+                style="padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; min-height:120px;">
+          <option *ngFor="let g of allGenres" [ngValue]="g">{{ g }}</option>
+        </select>
+        <small style="color:#64748b;">Prvi izabrani biće primaryGenre za mirror u Music.</small>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn secondary" type="button" (click)="closeEdit()">Cancel</button>
+        <button class="btn" type="submit" [disabled]="modalLoading"
+                style="border:1px solid #c7d2fe; background:linear-gradient(180deg,#eef2ff,#e0e7ff); color:#3730a3;">
+          {{ modalLoading ? 'Saving…' : 'Save changes' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
