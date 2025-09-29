@@ -14,6 +14,9 @@ dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ.get("TABLE_NAME", "Music")
 music_table = dynamodb.Table(TABLE_NAME)
 
+ARTISTS_TABLE = os.getenv("ARTISTS_TABLE", "Artists")
+artists_table = dynamodb.Table(ARTISTS_TABLE)
+
 BUCKET = os.environ["BUCKET_NAME"]
 
 # ===== helpers =====
@@ -973,3 +976,138 @@ def get_album(event, context):
 
     except Exception as e:
         return _err(500, "Get album failed", e)
+
+def list_artists(event, context):
+    try:
+        items = []
+        scan_kwargs = {}
+        while True:
+            resp = artists_table.scan(**scan_kwargs)
+            items.extend(resp.get("Items", []))
+            lek = resp.get("LastEvaluatedKey")
+            if not lek:
+                break
+            scan_kwargs["ExclusiveStartKey"] = lek
+
+        return cors_response(200, items)
+    except Exception as e:
+        return cors_response(500, {"error": str(e)})
+
+def _slug(s: str) -> str:
+    return "-".join((s or "").strip().lower().split())
+
+def update_artist(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except Exception:
+        return cors_response(400, {"error": "Invalid JSON"})
+
+    artist_id = (body.get("artistId") or "").strip()
+    if not artist_id:
+        return cors_response(400, {"error": "artistId required"})
+
+    # polja
+    name   = body.get("name")
+    bio    = body.get("bio")
+    genres = body.get("genres")  # lista ili None
+
+    # 1) update u Artists tabeli
+    sets, ean, eav = [], {}, {}
+    now = datetime.utcnow().isoformat()
+
+    if name is not None:
+        ean["#name"] = "name"; eav[":name"] = name; sets.append("#name=:name")
+    if bio is not None:
+        ean["#bio"] = "bio"; eav[":bio"] = bio; sets.append("#bio=:bio")
+    if genres is not None:
+        ean["#genres"] = "genres"; eav[":genres"] = genres; sets.append("#genres=:genres")
+    ean["#updatedAt"] = "updatedAt"; eav[":now"] = now; sets.append("#updatedAt=:now")
+
+    if not sets:
+        return cors_response(400, {"error": "Nothing to update"})
+
+    try:
+        artists_table.update_item(
+            Key={"artistId": artist_id},
+            UpdateExpression="SET " + ", ".join(sets),
+            ExpressionAttributeNames=ean,
+            ExpressionAttributeValues=eav,
+            ConditionExpression="attribute_exists(artistId)"
+        )
+    except Exception as e:
+        return cors_response(500, {"error": f"Artists update failed: {e}"})
+
+    # 2) mirror u Music (PK=ARTIST#id, SK=ARTIST) — da discover radi po GSI1
+    #    (ako ne postoji, napravi; ako postoji, azuriraj ime/zanr)
+    primary_genre = None
+    if isinstance(genres, list) and genres:
+        primary_genre = (genres[0] or "").strip().lower()
+
+    try:
+        pk = f"ARTIST#{artist_id}"
+        mirror = music_table.get_item(Key={"PK": pk, "SK": "ARTIST"}).get("Item")
+
+        now = datetime.utcnow().isoformat()
+
+        if not mirror:
+            # kreiraj novi mirror zapis
+            put_item = {
+                "PK": pk,
+                "SK": "ARTIST",
+                "entityType": "ARTIST",
+                "artistId": artist_id,
+                "name": (name or ""),  # može ostati prazno
+                "genres": (genres or []),
+                "primaryGenre": (primary_genre or "unknown"),
+                "createdAt": now,
+                "updatedAt": now,
+                "GSI1PK": f"GENRE#{primary_genre or 'unknown'}",
+                "GSI1SK": f"TYPE#ARTIST#NAME#{_slug(name or artist_id)}",
+            }
+            music_table.put_item(Item=put_item)
+
+        else:
+            # ažuriraj postojeći mirror
+            u_sets = ["#updatedAt = :now"]
+            u_ean = {"#updatedAt": "updatedAt"}
+            u_eav = {":now": now}
+
+            # ime
+            if name is not None:
+                u_ean["#name"] = "name"
+                u_eav[":name"] = name
+                u_sets.append("#name = :name")
+
+                u_ean["#g1sk"] = "GSI1SK"
+                u_eav[":g1sk"] = f"TYPE#ARTIST#NAME#{_slug(name)}"
+                u_sets.append("#g1sk = :g1sk")
+
+            # žanrovi + primaryGenre + GSI1PK
+            if genres is not None:
+                u_ean["#genres"] = "genres"
+                u_eav[":genres"] = genres
+                u_sets.append("#genres = :genres")
+
+                pg = (genres[0].strip().lower() if genres else "unknown")
+                u_ean["#primaryGenre"] = "primaryGenre"
+                u_eav[":pg"] = pg
+                u_sets.append("#primaryGenre = :pg")
+
+                u_ean["#g1pk"] = "GSI1PK"
+                u_eav[":g1pk"] = f"GENRE#{pg}"
+                u_sets.append("#g1pk = :g1pk")
+
+            music_table.update_item(
+                Key={"PK": pk, "SK": "ARTIST"},
+                UpdateExpression="SET " + ", ".join(u_sets),
+                ExpressionAttributeNames=u_ean,
+                ExpressionAttributeValues=u_eav,
+            )
+
+    except Exception as e:
+        return cors_response(500, {"error": f"Mirror update failed: {e}"})
+
+    return cors_response(200, {"message": "Artist updated", "artistId": artist_id})
