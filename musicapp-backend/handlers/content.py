@@ -468,6 +468,56 @@ def delete_content(event, context):
     except Exception as e:
         return _err(500, "DDB delete failed", e)
 
+def update_content(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+    body = json.loads(event.get("body") or "{}")
+    cid = (body.get("contentId") or "").strip()
+    if not cid:
+        return cors_response(400, {"error":"contentId required"})
+
+    pk = f"CONTENT#{cid}"
+    now = datetime.utcnow().isoformat()
+    sets, ean, eav = ["#updatedAt=:now"], {"#updatedAt":"updatedAt"}, {":now": now}
+
+    name   = body.get("name")
+    artists = body.get("artists")
+    genres = body.get("genres")
+    addA = body.get("addArtists") or []
+    remA = body.get("removeArtists") or []
+    addG = body.get("addGenres") or []
+    remG = body.get("removeGenres") or []
+
+    # full replace
+    if name is not None:
+        ean["#name"]="name"; eav[":name"]=name; sets.append("#name=:name")
+    if artists is not None:
+        ean["#artists"]="artists"; eav[":artists"]=artists; sets.append("#artists=:artists")
+    if genres is not None:
+        ean["#genres"]="genres"; eav[":genres"]=genres; sets.append("#genres=:genres")
+
+    # incremental (ako želiš)
+    if addA or remA or addG or remG:
+        # uzmi postojeći
+        meta = music_table.get_item(Key={"PK": pk, "SK":"METADATA"}).get("Item") or {}
+        curA = set(meta.get("artists", []))
+        curG = set(meta.get("genres", []))
+        curA |= set(addA); curA -= set(remA)
+        curG |= set(addG); curG -= set(remG)
+        ean["#artists"]="artists"; eav[":artists"]=list(curA); sets.append("#artists=:artists")
+        ean["#genres"]="genres"; eav[":genres"]=list(curG); sets.append("#genres=:genres")
+
+    music_table.update_item(
+        Key={"PK": pk, "SK": "METADATA"},
+        UpdateExpression="SET " + ", ".join(sets),
+        ExpressionAttributeNames=ean,
+        ExpressionAttributeValues=eav,
+        ConditionExpression="attribute_exists(PK)"
+    )
+
+    return cors_response(200, {"message":"Content updated","contentId":cid})
+
+
 
 def delete_album(event, context):
     if not _is_admin(event):
