@@ -16,6 +16,7 @@ import { CreateArtistComponent } from './pages/create-artist/create-artist.compo
 import {AlbumsTableComponent} from './pages/albums-table/albums-table.component';
 import {ArtistTableComponent} from './pages/artist-table/artist-table.component';
 import {TracksTableComponent} from './pages/tracks-table/tracks-table.component';
+import {RouterModule} from '@angular/router';
 
 @NgModule({
   declarations: [
@@ -30,15 +31,16 @@ import {TracksTableComponent} from './pages/tracks-table/tracks-table.component'
     CreateArtistComponent,
     AlbumsTableComponent,
     ArtistTableComponent,
-    TracksTableComponent
+    TracksTableComponent,
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
     FormsModule,
     ReactiveFormsModule,
+    RouterModule,
+    ReactiveFormsModule,
     AppRoutingModule,
-
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },

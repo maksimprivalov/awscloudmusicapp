@@ -23,6 +23,9 @@ type LoginResLoose =
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private tokenKey = 'jwt';
+  private accessKey  = 'accessToken';
+  private refreshKey = 'refreshToken';
+  private roleKey    = 'role';
   constructor(private http: HttpClient) {}
 
   register(payload: RegisterDto) {
@@ -40,13 +43,31 @@ export class AuthService {
             (res as any)?.IdToken ??
             (res as any)?.AuthenticationResult?.IdToken;
 
-          if (idTok) {
-            localStorage.setItem(this.tokenKey, idTok);
-          } else {
 
-            localStorage.removeItem(this.tokenKey);
+          // access token
+          const acc =
+            (res as any)?.accessToken ??
+            (res as any)?.AccessToken ??
+            (res as any)?.AuthenticationResult?.AccessToken;
+
+
+          // refresh token
+          const ref =
+            (res as any)?.refreshToken ??
+            (res as any)?.RefreshToken ??
+            (res as any)?.AuthenticationResult?.RefreshToken;
+
+          if (!idTok) {
+            this.logout();
             throw new Error('Login response did not contain IdToken');
           }
+
+          localStorage.setItem(this.tokenKey, idTok);
+          if (acc) localStorage.setItem(this.accessKey, acc);
+          if (ref) localStorage.setItem(this.refreshKey, ref);
+
+          const role = this.getRole();
+          if (role) localStorage.setItem(this.roleKey, role);
         })
       );
   }
@@ -59,8 +80,18 @@ export class AuthService {
     return localStorage.getItem(this.tokenKey);
   }
 
+  getAccessToken(): string | null {
+    return localStorage.getItem(this.accessKey);
+  }
+  getRefreshToken(): string | null {
+    return localStorage.getItem(this.refreshKey);
+  }
+
   logout() {
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.accessKey);
+    localStorage.removeItem(this.refreshKey);
+    localStorage.removeItem(this.roleKey);
   }
 
   getClaims(): any | null {
@@ -76,6 +107,30 @@ export class AuthService {
     }
   }
 
+
+  getRole(): string {
+    const claims = this.getClaims();
+    // Cognito grupe (preporučeno): ['Admin', 'User', ...]
+    const cg = claims?.['cognito:groups'];
+    const fromGroups = Array.isArray(cg) ? cg[0] : (typeof cg === 'string' ? cg : '');
+
+    // alternativno custom claim 'custom:role' ili 'role'
+    const custom = claims?.['custom:role'] ?? claims?.['role'] ?? '';
+
+    const r = (fromGroups || custom || '').toString().toLowerCase();
+    if (r.includes('admin')) return 'admin';
+    if (r === 'ca' || r.includes(' ca')) return 'ca';
+    if (r.includes('user')) return 'user';
+    return r;
+  }
+
+  hasRole(expected: string | string[]): boolean {
+    const role = this.getRole();
+    const arr = Array.isArray(expected) ? expected : [expected];
+    return arr.map(x => x.toLowerCase()).includes(role);
+  }
+  isCa(): boolean    { return this.hasRole('ca'); }
+  isUser(): boolean  { return this.hasRole('user'); }
   isAdmin(): boolean {
     const claims = this.getClaims();
     if (!claims) return false;
@@ -90,5 +145,6 @@ export class AuthService {
       return groups.split(',').includes('Admin') || groups.includes('Admin');
     }
     return false;
-    }
+  }
+
 }

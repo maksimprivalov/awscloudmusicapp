@@ -13,8 +13,11 @@ import {CreateArtistComponent} from './pages/create-artist/create-artist.compone
 import {AlbumsTableComponent} from './pages/albums-table/albums-table.component';
 import {ArtistTableComponent} from './pages/artist-table/artist-table.component';
 import {TracksTableComponent} from './pages/tracks-table/tracks-table.component';
+import {HomeMainComponent} from './pages/home-page/home-main/home-main.component';
 
 const routes: Routes = [
+  { path: 'home-admin', component: HomeMainComponent /*, canActivate: [AdminGuard]*/},
+
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
   { path: 'discover', component: DiscoverComponent },
@@ -26,7 +29,8 @@ const routes: Routes = [
   { path: 'admin/artists/create', component: CreateArtistComponent /*, canActivate: [AdminGuard]*/ },
   { path: 'admin/upload', component: AdminUploadComponent, canActivate: [AdminGuard] },
   { path: '', pathMatch: 'full', redirectTo: 'discover' },
-  { path: '**', redirectTo: 'discover' },
+  { path: '**', redirectTo: 'login' },
+
 ];
 
 @NgModule({
