@@ -12,6 +12,7 @@ import { AdminGuard } from './guards/admin-guard';
 import {CreateArtistComponent} from './pages/create-artist/create-artist.component';
 import {AlbumsTableComponent} from './pages/albums-table/albums-table.component';
 import {ArtistTableComponent} from './pages/artist-table/artist-table.component';
+import {TracksTableComponent} from './pages/tracks-table/tracks-table.component';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -19,6 +20,7 @@ const routes: Routes = [
   { path: 'discover', component: DiscoverComponent },
   { path: 'album-table', component: AlbumsTableComponent },
   { path: 'artist-table', component: ArtistTableComponent },
+  { path: 'tracks-table', component: TracksTableComponent },
   { path: 'content', component: ContentListComponent },
   { path: 'content/:id', component: ContentDetailComponent },
   { path: 'admin/artists/create', component: CreateArtistComponent /*, canActivate: [AdminGuard]*/ },
