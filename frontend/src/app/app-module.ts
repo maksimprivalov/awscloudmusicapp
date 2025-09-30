@@ -15,6 +15,7 @@ import { ContentDetailComponent } from './pages/content-detail/content-detail.co
 import { CreateArtistComponent } from './pages/create-artist/create-artist.component';
 import {AlbumsTableComponent} from './pages/albums-table/albums-table.component';
 import {ArtistTableComponent} from './pages/artist-table/artist-table.component';
+import {TracksTableComponent} from './pages/tracks-table/tracks-table.component';
 
 @NgModule({
   declarations: [
@@ -29,6 +30,7 @@ import {ArtistTableComponent} from './pages/artist-table/artist-table.component'
     CreateArtistComponent,
     AlbumsTableComponent,
     ArtistTableComponent,
+    TracksTableComponent
   ],
   imports: [
     BrowserModule,
