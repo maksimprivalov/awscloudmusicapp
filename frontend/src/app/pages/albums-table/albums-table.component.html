@@ -1,0 +1,202 @@
+<div class="app-container">
+  <section class="card" style="width:min(1080px,96vw);">
+    <div style="display:flex; align-items:center; gap:12px; justify-content:space-between;">
+      <div>
+        <h1 style="margin:0;">Albums</h1>
+        <p class="sub" style="margin:4px 0 0;">Manage album mapping & track order</p>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary" type="button" (click)="refresh()" [disabled]="loading">
+          {{ loading ? 'Loading…' : 'Refresh' }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="msg info" style="margin-top:12px;">Loading albums…</div>
+    <div *ngIf="error" class="msg error" style="margin-top:12px;">{{ error }}</div>
+
+    <div *ngIf="!loading && albums?.length" style="margin-top:16px; overflow:auto; border:1px solid #e5e7eb; border-radius:12px;">
+      <table style="width:100%; border-collapse:separate; border-spacing:0;">
+        <thead>
+        <tr style="background:#f8fafc;">
+          <th style="text-align:left; padding:12px 14px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e5e7eb;">Album ID</th>
+          <th style="text-align:left; padding:12px 14px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e5e7eb;">Album name</th>
+         <!-- <th style="text-align:left; padding:12px 14px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e5e7eb;">Author</th>-->
+          <th style="text-align:left; padding:12px 14px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e5e7eb;">Primary genre</th>
+          <th style="text-align:left; padding:12px 14px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e5e7eb;"># Tracks</th>
+          <th style="text-align:left; padding:12px 14px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e5e7eb;">Example</th>
+          <th style="text-align:right; padding:12px 14px; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e5e7eb;">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let a of albums; trackBy: trackByAlbumId" style="border-bottom:1px solid #f1f5f9;">
+          <!-- Album ID -->
+          <td style="padding:14px;">
+      <span style="display:inline-block; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; background:#f1f5f9; border:1px solid #e2e8f0; padding:3px 8px; border-radius:8px;">
+        {{ a.albumId }}
+      </span>
+          </td>
+
+          <!-- Album name -->
+          <td style="padding:14px; color:#334155;">
+            {{ a.albumName || '—' }}
+          </td>
+
+
+          <!-- Primary genre -->
+          <td style="padding:14px; color:#64748b;">
+            {{ a.primaryGenre || '—' }}
+          </td>
+
+          <!-- # Tracks -->
+          <td style="padding:14px;">
+      <span style="display:inline-block; background:#eef2ff; color:#4f46e5; border:1px solid #e0e7ff; padding:3px 8px; border-radius:999px; font-size:12px;">
+        {{ a.trackCount }}
+      </span>
+          </td>
+
+          <!-- Example -->
+          <td style="padding:14px; color:#64748b;">
+            {{ a.exampleName || '—' }}
+          </td>
+
+          <!-- Actions -->
+          <td style="padding:14px; text-align:right;">
+            <div style="display:inline-flex; gap:8px;">
+              <button class="btn" type="button"
+                      style="border:1px solid #c7d2fe; background:linear-gradient(180deg,#eef2ff,#e0e7ff); color:#3730a3; padding:8px 12px; border-radius:10px; font-weight:600;"
+                      (click)="openEdit(a)">
+                Edit
+              </button>
+              <button class="btn" type="button"
+                      style="border:1px solid #fecaca; background:linear-gradient(180deg,#fee2e2,#fecaca); color:#991b1b; padding:8px 12px; border-radius:10px; font-weight:600;"
+                      (click)="onDelete(a)"
+                      [disabled]="deleting.has(a.albumId)">
+                {{ deleting.has(a.albumId) ? 'Deleting…' : 'Delete' }}
+              </button>
+            </div>
+          </td>
+        </tr>
+        </tbody>
+
+      </table>
+    </div>
+
+    <div *ngIf="!loading && (!albums || !albums.length)" class="msg info" style="margin-top:16px;">
+      No albums found. Create content with albumId first.
+    </div>
+  </section>
+</div>
+
+<!-- ======= EDIT MODAL ======= -->
+<div *ngIf="editingAlbum" style="
+  position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.45); z-index:50;">
+  <div class="card" style="width:min(860px,94vw); max-height:92vh; overflow:auto; padding:18px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <div>
+        <h2 style="margin:0;">Edit album</h2>
+        <p class="sub" style="margin:4px 0 0;">Album ID: <strong>{{ editingAlbum.albumId }}</strong></p>
+      </div>
+      <button class="btn secondary" (click)="closeEdit()">Close</button>
+    </div>
+
+    <div *ngIf="modalLoading" class="msg info" style="margin-top:12px;">Loading tracks…</div>
+    <div *ngIf="modalError" class="msg error" style="margin-top:12px;">{{ modalError }}</div>
+
+    <form (ngSubmit)="saveEdit()" style="margin-top:16px; display:grid; gap:12px;">
+
+      <!-- POLJA ALBUMA -->
+      <div style="display:grid; gap:12px; grid-template-columns: repeat(2, minmax(260px,1fr));">
+        <div class="input">
+          <label>Album name</label>
+          <input type="text" [(ngModel)]="editName" name="name"
+                 placeholder="Album name"
+                 style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+        </div>
+
+        <div class="input">
+          <label>Genres </label>
+          <select multiple [(ngModel)]="editGenres" name="genres"
+                  style="padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px; min-height:112px;">
+            <option *ngFor="let g of allGenres" [ngValue]="g">{{ g }}</option>
+          </select>
+          <small style="color:#64748b;">First chosen genre will be <strong>primaryGenre</strong>.</small>
+        </div>
+
+        <div class="input" style="grid-column:1 / -1;">
+          <label>Description</label>
+          <textarea [(ngModel)]="editDescription" name="description" rows="2"
+                    style="width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;"></textarea>
+        </div>
+
+      </div>
+
+      <!-- DODAVANJE PESAMA PO contentId -->
+      <div class="input">
+        <label>Add tracks (comma separated contentIds)</label>
+        <input type="text" [(ngModel)]="addContentIdsText" name="addContentIds"
+               placeholder="cid1,cid2"
+               style="padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px;">
+      </div>
+
+      <!-- PREGLED PESAMA + SELEKCIJA ZA UKLANJANJE -->
+      <div style="border:1px solid #e5e7eb; border-radius:12px; overflow:auto;">
+        <table style="width:100%; border-collapse:separate; border-spacing:0;">
+          <thead>
+          <tr style="background:#f8fafc;">
+            <th style="text-align:left; padding:10px 12px; font-size:12px; color:#64748b;">Del</th>
+            <th style="text-align:left; padding:10px 12px; font-size:12px; color:#64748b;">#</th>
+            <th style="text-align:left; padding:10px 12px; font-size:12px; color:#64748b;">Name</th>
+            <th style="text-align:left; padding:10px 12px; font-size:12px; color:#64748b;">contentId</th>
+            <th style="text-align:left; padding:10px 12px; font-size:12px; color:#64748b;">trackNo</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr *ngFor="let t of tracksForEdit; let i = index" style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:10px 12px;">
+              <input type="checkbox"
+                     [checked]="selectedToRemove.has(t.contentId)"
+                     (change)="toggleRemove(t)">
+            </td>
+            <td style="padding:10px 12px; color:#64748b;">{{ i + 1 }}</td>
+            <td style="padding:10px 12px;">{{ t.name }}</td>
+            <td style="padding:10px 12px;">
+                <span style="font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; background:#f1f5f9; border:1px solid #e2e8f0; padding:2px 6px; border-radius:8px;">
+                  {{ t.contentId }}
+                </span>
+            </td>
+            <td style="padding:10px 12px;">{{ t.trackNo ?? '—' }}</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RESEQUENCE / SORT -->
+      <div style="display:flex; align-items:center; gap:16px;">
+        <label style="display:inline-flex; align-items:center; gap:8px; color:#64748b;">
+          <input type="checkbox" [(ngModel)]="modalResequence" name="resequence" />
+          Resequence 1..N
+        </label>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="color:#64748b;">Sort by</span>
+          <select [(ngModel)]="sortBy" name="sortBy" (change)="onSortChange(sortBy)"
+                  style="padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px;">
+            <option value="trackNo">trackNo</option>
+            <option value="name">name</option>
+            <option value="contentId">contentId</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn secondary" type="button" (click)="closeEdit()">Cancel</button>
+        <button class="btn" type="submit"
+                [disabled]="modalLoading"
+                style="border:1px solid #c7d2fe; background:linear-gradient(180deg,#eef2ff,#e0e7ff); color:#3730a3; padding:8px 12px; border-radius:10px; font-weight:600;">
+          {{ modalLoading ? 'Saving…' : 'Save changes' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

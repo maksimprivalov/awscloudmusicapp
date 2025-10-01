@@ -113,9 +113,6 @@ functions:
             origin: 'http://localhost:4200'
             headers: [ Content-Type, Authorization ]
             allowCredentials: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
 
   getUploadUrl:
     handler: handlers/content.get_upload_url
@@ -145,6 +142,49 @@ functions:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
 
+  deleteContent:
+    handler: handlers/content.delete_content
+    events:
+      - http:
+          method: DELETE
+          path: admin/content/{contentId}
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  deleteAlbum:
+    handler: handlers/content.delete_album
+    events:
+      - http:
+          method: DELETE
+          path: admin/album/{albumId}
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  deleteArtist:
+    handler: handlers/content.delete_artist
+    events:
+      - http:
+          method: DELETE
+          path: admin/artist/{artistId}
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+
   listContent:
     handler: handlers/content.list_content
     events:
@@ -170,6 +210,89 @@ functions:
             origin: 'http://localhost:4200'
             headers: [ Content-Type, Authorization ]
             allowCredentials: true
+
+  updateContent:
+    handler: handlers/content.update_content
+    events:
+      - http:
+          path: admin/content/update
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+
+  createAlbum:
+    handler: handlers/content.create_album
+    events:
+      - http:
+          path: admin/album
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  updateAlbum:
+    handler: handlers/content.update_album
+    events:
+      - http:
+          path: admin/album/update
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  getAlbum:
+    handler: handlers/content.get_album
+    events:
+      - http:
+          path: album/{albumId}
+          method: get
+          request:
+            parameters:
+              paths:
+                albumId: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  getArtist:
+    handler: handlers/content.list_artists
+    events:
+      - http:
+          path: artists
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  updateArtist:
+    handler: handlers/content.update_artist
+    events:
+      - http:
+          path: admin/artist/update
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
 
 resources:
   Resources:

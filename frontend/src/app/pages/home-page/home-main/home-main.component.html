@@ -1,0 +1,16 @@
+<div class="admin-home">
+  <header class="admin-header">
+    <h1>Admin Dashboard</h1>
+    <button class="logout-btn" (click)="onLogout()">Logout</button>
+  </header>
+
+  <div class="shortcuts">
+    <div class="card" *ngFor="let s of shortcuts" (click)="goTo(s.link)">
+      <div class="icon">{{ s.icon }}</div>
+      <div class="info">
+        <h3>{{ s.title }}</h3>
+        <p>{{ s.desc }}</p>
+      </div>
+    </div>
+  </div>
+</div>
