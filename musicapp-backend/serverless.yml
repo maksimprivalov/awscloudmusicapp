@@ -308,6 +308,10 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http:   # 🔥 preflight
+          path: user/subscribe
+          method: options
+          cors: true
 
   unsubscribe:
     handler: handlers/subscriptions.unsubscribe
@@ -322,6 +326,10 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http:
+          path: user/unsubscribe
+          method: options
+          cors: true
 
   listSubscriptions:
     handler: handlers/subscriptions.list_subscriptions
@@ -336,6 +344,11 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http:
+          path: user/subscriptions
+          method: options
+          cors: true
+
 resources:
   Resources:
     GatewayResponseDefault4XX:

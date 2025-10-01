@@ -9,6 +9,14 @@
       <p><b>Type:</b> {{ item.fileType }} | <b>Size:</b> {{ item.fileSize }} B</p>
       <p><b>Genres:</b> {{ item.genres?.join(', ') || '-' }}</p>
       <audio *ngIf="item.playUrl" [src]="item.playUrl" controls></audio>
+
+      <div class="actions">
+        <button class="btn" (click)="subscribe()">Pretplati se</button>
+      </div>
+
+      <div *ngIf="subStatus" class="msg info">
+        {{ subStatus }}
+      </div>
     </div>
   </section>
 </div>

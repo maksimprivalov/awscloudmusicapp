@@ -34,5 +34,10 @@ def forbidden(msg="Forbidden"): return response(403, {"error": msg})
 def not_found(msg="Not found"): return response(404, {"error": msg})
 def server_error(msg="Internal Server Error"): return response(500, {"error": msg})
 
-# def preflight():
-#     return {"statusCode": 204, "headers": DEFAULT_HEADERS, "body": ""}
+def preflight(event=None):
+
+    return {
+        "statusCode": 204,
+        "headers": DEFAULT_HEADERS,
+        "body": ""
+    }

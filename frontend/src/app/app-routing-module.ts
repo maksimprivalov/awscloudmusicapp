@@ -16,7 +16,7 @@ import {TracksTableComponent} from './pages/tracks-table/tracks-table.component'
 import {HomeMainComponent} from './pages/home-page/home-main/home-main.component';
 
 const routes: Routes = [
-  { path: 'home-admin', component: HomeMainComponent /*, canActivate: [AdminGuard]*/},
+  { path: 'home-admin', component: HomeMainComponent, canActivate: [AdminGuard]},
 
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
@@ -26,7 +26,7 @@ const routes: Routes = [
   { path: 'tracks-table', component: TracksTableComponent },
   { path: 'content', component: ContentListComponent },
   { path: 'content/:id', component: ContentDetailComponent },
-  { path: 'admin/artists/create', component: CreateArtistComponent /*, canActivate: [AdminGuard]*/ },
+  { path: 'admin/artists/create', component: CreateArtistComponent, canActivate: [AdminGuard] },
   { path: 'admin/upload', component: AdminUploadComponent, canActivate: [AdminGuard] },
   { path: '', pathMatch: 'full', redirectTo: 'discover' },
   { path: '**', redirectTo: 'login' },
