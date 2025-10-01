@@ -6,6 +6,12 @@ import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class ContentService {
+  subscribeToContent(targetType: string, targetId: string) {
+    return this.http.post(`${environment.apiBase}/subscriptions`, {
+      targetType,
+      targetId
+    });
+  }
   private base = environment.apiBase;
 
   constructor(private http: HttpClient) {}
@@ -33,7 +39,6 @@ export class ContentService {
   getContent(id: string) {
     return this.http.get<any>(`${this.base}/content/${id}`);
   }
-
   discover(genre: string, type: 'ALBUM'|'ARTIST'|'' = '', limit = 12, lastKey?: string) {
     let params = new HttpParams().set('genre', genre).set('limit', limit);
     if (type) params = params.set('type', type);
