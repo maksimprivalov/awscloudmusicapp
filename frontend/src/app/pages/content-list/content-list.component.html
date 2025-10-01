@@ -16,10 +16,8 @@
           </div>
 
           <div class="actions">
-            <button class="btn secondary small"
-              (click)="open(it.contentId || (it.PK?.split('#')[1]))">
-              Detalji
-            </button>
+            <button (click)="open(it.contentId)">Detalji</button>
+
           </div>
         </div>
 

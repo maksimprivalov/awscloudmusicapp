@@ -21,5 +21,8 @@ export class ContentListComponent implements OnInit {
     });
   }
 
-  open(id: string) { this.router.navigate(['/content', id]); }
+  open(id: string) {
+  this.router.navigate(['/content', id]);
+}
+
 }
