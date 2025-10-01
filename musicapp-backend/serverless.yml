@@ -34,6 +34,7 @@ provider:
         - "arn:aws:dynamodb:eu-central-1:*:table/Artists"
         - "arn:aws:dynamodb:eu-central-1:*:table/Music"
         - "arn:aws:dynamodb:eu-central-1:*:table/Music/index/*"
+        - "arn:aws:dynamodb:eu-central-1:*:table/Subscriptions"
         - "arn:aws:s3:::${self:custom.bucketName}"
         - "arn:aws:s3:::${self:custom.bucketName}/*"
 
@@ -293,7 +294,48 @@ functions:
           authorizer:
             type: COGNITO_USER_POOLS
             arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+            
+  subscribe:
+    handler: handlers/subscriptions.subscribe
+    events:
+      - http:
+          path: user/subscribe
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
 
+  unsubscribe:
+    handler: handlers/subscriptions.unsubscribe
+    events:
+      - http:
+          path: user/unsubscribe
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  listSubscriptions:
+    handler: handlers/subscriptions.list_subscriptions
+    events:
+      - http:
+          path: user/subscriptions
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
 resources:
   Resources:
     GatewayResponseDefault4XX:
@@ -383,5 +425,20 @@ resources:
               ExposedHeaders: ['ETag']
               MaxAge: 3000
 
+    SubscriptionsTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+          TableName: Subscriptions
+          BillingMode: PAY_PER_REQUEST
+          AttributeDefinitions:
+            - AttributeName: userId
+              AttributeType: S
+            - AttributeName: targetKey
+              AttributeType: S
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: targetKey
+              KeyType: RANGE
 plugins:
   - serverless-python-requirements
