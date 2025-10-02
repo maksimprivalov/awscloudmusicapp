@@ -12,6 +12,11 @@ export class ContentService {
       targetId
     });
   }
+
+  subscribeToTarget(targetType: 'TRACK'|'ALBUM'|'ARTIST', targetId: string) {
+    return this.http.post(`${this.base}/user/subscribe`, { targetType, targetId });
+  }
+
   private base = environment.apiBase;
 
   constructor(private http: HttpClient) {}
