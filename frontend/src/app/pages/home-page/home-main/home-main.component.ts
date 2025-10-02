@@ -36,7 +36,8 @@ export class HomeMainComponent implements OnInit {
     { icon: '🎤', title: 'Artist', desc: 'Edit and delete artist', link: 'artist-table' },
     { icon: '🎶', title: 'Music', desc: 'View all music', link: 'tracks-table' },
     { icon: '📊', title: 'Albums', desc: 'View all albums', link: 'album-table' },
-    { icon: '🌍', title: 'Discover', desc: 'Explore content like users see it', link: 'discover' } 
+    { icon: '🌍', title: 'Discover', desc: 'Explore content like users see it', link: 'discover' },
+     { icon: '➕', title: 'Add music', desc: 'Upload new track', link: 'admin/upload' }
 
   ];
 
