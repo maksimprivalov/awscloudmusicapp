@@ -1,0 +1,19 @@
+<div class="app-container">
+  <section class="card">
+    <h1>🔔 Moje pretplate</h1>
+
+    <div *ngIf="loading" class="msg info">⏳ Učitavanje...</div>
+
+    <div *ngIf="!loading && subs.length === 0" class="msg info">
+      Nema pretplata.
+    </div>
+
+    <div class="grid" *ngIf="!loading && subs.length > 0">
+      <div class="card-sm" *ngFor="let sub of subs">
+        <p><b>{{ sub.targetKey }}</b></p>
+        <p class="helper">Dodato: {{ sub.createdAt | date:'short' }}</p>
+        <button class="btn danger" (click)="unsubscribe(sub)">Otkaži pretplatu</button>
+      </div>
+    </div>
+  </section>
+</div>

@@ -12,6 +12,17 @@ export class ContentService {
       targetId
     });
   }
+  
+  unsubscribeFromContent(targetType: string, targetId: string) {
+    return this.http.post(`${this.base}/user/unsubscribe`, {
+      targetType,
+      targetId
+    });
+  }
+
+  listSubscriptions() {
+    return this.http.get<any[]>(`${this.base}/user/subscriptions`);
+  }
 
   subscribeToTarget(targetType: 'TRACK'|'ALBUM'|'ARTIST', targetId: string) {
     return this.http.post(`${this.base}/user/subscribe`, { targetType, targetId });

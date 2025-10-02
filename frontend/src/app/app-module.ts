@@ -18,6 +18,8 @@ import {ArtistTableComponent} from './pages/artist-table/artist-table.component'
 import {TracksTableComponent} from './pages/tracks-table/tracks-table.component';
 import {RouterModule} from '@angular/router';
 import {NotificationsBellComponent} from './pages/notifications-bell/notifications-bell.component';
+import { SubscriptionsComponent } from './pages/subscriptions/subscriptions.component';
+import { HeaderComponent } from './shared/header/header.component';
 
 @NgModule({
   declarations: [
@@ -33,7 +35,9 @@ import {NotificationsBellComponent} from './pages/notifications-bell/notificatio
     AlbumsTableComponent,
     ArtistTableComponent,
     TracksTableComponent,
-    NotificationsBellComponent
+    NotificationsBellComponent,
+    SubscriptionsComponent,
+    HeaderComponent
   ],
   imports: [
     BrowserModule,

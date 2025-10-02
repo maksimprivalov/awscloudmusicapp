@@ -1,4 +1,3 @@
-// app-routing-module.ts
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { LoginComponent } from './pages/login/login.component';
@@ -14,6 +13,7 @@ import {AlbumsTableComponent} from './pages/albums-table/albums-table.component'
 import {ArtistTableComponent} from './pages/artist-table/artist-table.component';
 import {TracksTableComponent} from './pages/tracks-table/tracks-table.component';
 import {HomeMainComponent} from './pages/home-page/home-main/home-main.component';
+import { SubscriptionsComponent } from './pages/subscriptions/subscriptions.component';
 
 const routes: Routes = [
   { path: 'home-admin', component: HomeMainComponent, canActivate: [AdminGuard]},
@@ -28,6 +28,8 @@ const routes: Routes = [
   { path: 'content/:id', component: ContentDetailComponent },
   { path: 'admin/artists/create', component: CreateArtistComponent, canActivate: [AdminGuard] },
   { path: 'admin/upload', component: AdminUploadComponent, canActivate: [AdminGuard] },
+  { path: 'subscriptions', component: SubscriptionsComponent },
+
   { path: '', pathMatch: 'full', redirectTo: 'discover' },
   { path: '**', redirectTo: 'login' },
 
