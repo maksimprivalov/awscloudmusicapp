@@ -20,7 +20,7 @@ const routes: Routes = [
 
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
-  { path: 'discover', component: DiscoverComponent },
+  { path: 'discover', component: DiscoverComponent, canActivate: [AuthGuard] },
   { path: 'album-table', component: AlbumsTableComponent },
   { path: 'artist-table', component: ArtistTableComponent },
   { path: 'tracks-table', component: TracksTableComponent },
