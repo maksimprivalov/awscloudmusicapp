@@ -1,0 +1,42 @@
+<div class="notif-bell-wrap">
+  <button class="icon-btn" type="button" (click)="toggle()" aria-label="Notifications">
+    <!-- SVG zvonce -->
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm6.36-6V11a6.36 6.36 0 0 0-5.36-6.28V4a1 1 0 1 0-2 0v.72A6.36 6.36 0 0 0 5.64 11v5L4 18v1h16v-1l-1.64-2Z" stroke="currentColor" stroke-width="1.2" fill="currentColor" />
+    </svg>
+    <span *ngIf="unreadCount>0" class="badge">{{ unreadCount }}</span>
+  </button>
+
+  <div class="dropdown" *ngIf="open">
+    <div class="drop-header">
+      <strong>Notifikacije</strong>
+      <button class="link" type="button" (click)="markAll()" [disabled]="unreadCount===0">Označi sve kao pročitano</button>
+    </div>
+
+    <div class="drop-body">
+      <div *ngIf="loading" class="msg info">Učitavam…</div>
+      <div *ngIf="error" class="msg error">{{ error }}</div>
+
+      <div *ngIf="!loading && items.length===0" class="msg info">Nema notifikacija.</div>
+
+      <ul *ngIf="!loading && items.length>0" class="list">
+        <li *ngFor="let n of items" [class.unread]="n.unread" (click)="markRead(n)">
+          <div class="row">
+            <div class="title">{{ n.title }}</div>
+            <div class="time">{{ n.createdAt | date:'short' }}</div>
+          </div>
+          <div class="body">{{ n.body }}</div>
+          <div class="meta" *ngIf="n.type==='TRACK_ADDED' && n.contentId">
+            Track: {{ n.contentId }}
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="drop-footer" *ngIf="nextKey">
+      <button class="btn secondary" (click)="loadMore()" [disabled]="loadingMore">
+        {{ loadingMore ? 'Učitavam…' : 'Učitaj još' }}
+      </button>
+    </div>
+  </div>
+</div>

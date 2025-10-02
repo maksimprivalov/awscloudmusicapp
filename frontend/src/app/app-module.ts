@@ -17,6 +17,7 @@ import {AlbumsTableComponent} from './pages/albums-table/albums-table.component'
 import {ArtistTableComponent} from './pages/artist-table/artist-table.component';
 import {TracksTableComponent} from './pages/tracks-table/tracks-table.component';
 import {RouterModule} from '@angular/router';
+import {NotificationsBellComponent} from './pages/notifications-bell/notifications-bell.component';
 
 @NgModule({
   declarations: [
@@ -32,6 +33,7 @@ import {RouterModule} from '@angular/router';
     AlbumsTableComponent,
     ArtistTableComponent,
     TracksTableComponent,
+    NotificationsBellComponent
   ],
   imports: [
     BrowserModule,
