@@ -1,16 +1,77 @@
 <div class="admin-home">
+  <!-- Header / Top bar -->
   <header class="admin-header">
-    <h1>Admin Dashboard</h1>
-    <button class="logout-btn" (click)="onLogout()">Logout</button>
-  </header>
-
-  <div class="shortcuts">
-    <div class="card" *ngFor="let s of shortcuts" (click)="goTo(s.link)">
-      <div class="icon">{{ s.icon }}</div>
-      <div class="info">
-        <h3>{{ s.title }}</h3>
-        <p>{{ s.desc }}</p>
+    <div class="header-left">
+      <h1 class="title">Music App • Admin Dashboard</h1>
+      <div class="user-roles" *ngIf="userRoles?.length">
+        <span class="role-chip" *ngFor="let r of userRoles">{{ r }}</span>
       </div>
     </div>
-  </div>
+  </header>
+
+  <!-- Subheader / Greeting -->
+  <section class="subheader">
+    <div class="hello">
+      <h2>Zdravo 👋</h2>
+      <p class="muted">
+        Brzi pristup administraciji izvođača, muzike, albuma i upload-u sadržaja. Klikni na opciju ispod.
+      </p>
+    </div>
+  </section>
+
+  <!-- Opcije -->
+  <section class="options">
+    <h3 class="section-title">Opcije</h3>
+
+    <div class="options-list">
+      <a
+        class="option"
+        *ngFor="let s of shortcuts; trackBy: trackBy"
+        [routerLink]="s.link"
+        [attr.aria-label]="s.title"
+        [class.option--admin]="s.link.startsWith('/admin')"
+      >
+        <div class="option__icon">{{ s.icon }}</div>
+
+        <div class="option__meta">
+          <div class="option__title">{{ s.title }}</div>
+          <div class="option__desc">{{ s.desc }}</div>
+        </div>
+
+        <div class="option__chevron">›</div>
+      </a>
+    </div>
+
+    <!-- (Opcioni) hint – možeš obrisati ako ne treba -->
+    <p class="hint" *ngIf="!userRoles?.includes('ADMIN')">
+      Neke administrativne stavke su označene, ali će rutu svakako zaštititi guard.
+    </p>
+  </section>
+
+  <!-- Info blocks -->
+  <section class="info-panels">
+    <div class="panel">
+      <h4>Kako funkcioniše?</h4>
+      <ul class="bullets">
+        <li><strong>Create artist</strong> – dodaj novog izvođača sa osnovnim metapodacima.</li>
+        <li><strong>Add music</strong> – upload audio fajla i dodela izvođača/žanrova.</li>
+        <li><strong>Artist / Music / Albums</strong> – uređivanje i pregled postojećeg kataloga.</li>
+        <li><strong>Discover</strong> – vidi aplikaciju kao krajnji korisnik.</li>
+      </ul>
+    </div>
+
+    <div class="panel">
+      <h4>Saveti</h4>
+      <ul class="bullets">
+        <li>Koristi jasne nazive i žanrove radi boljeg pretraživanja.</li>
+        <li>Grupiši pesme po albumima pre masovnog unosa.</li>
+        <li>Proveri prikaz u <em>Discover</em> nakon svake izmene.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>© Music App · Cloud projekat</span>
+  </footer>
 </div>

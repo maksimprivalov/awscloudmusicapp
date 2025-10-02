@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HomeMainComponent } from './home-main/home-main.component';
-import { HomeUserComponent } from './home-user/home-user.component';
+import {RouterLink} from '@angular/router';
 
 
 
@@ -11,7 +11,8 @@ import { HomeUserComponent } from './home-user/home-user.component';
 
   ],
   imports: [
-    CommonModule
+    CommonModule,
+    RouterLink
   ]
 })
 export class HomePageModule { }

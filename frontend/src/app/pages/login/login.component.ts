@@ -30,12 +30,14 @@ export class LoginComponent {
     this.auth.login(this.form.value as any).subscribe({
       next: () => {
         this.loading = false;
-        this.router.navigate(['/discover']);
-      },
-      error: () => {
-        this.err = 'Neispravni kredencijali.';
-        this.loading = false;
-      },
+        const role = this.auth.getRole();
+
+        if (role === 'ADMIN') {
+          this.router.navigate(['/home-admin']);
+        } else {
+          this.router.navigate(['/discover']);
+        }
+      }
     });
   }
 }
