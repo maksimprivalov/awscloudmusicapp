@@ -7,6 +7,7 @@
     <a routerLink="/discover" routerLinkActive="active">Discover</a>
     <a routerLink="/content" routerLinkActive="active">All music</a>
     <a routerLink="/subscriptions" routerLinkActive="active">My subscriptions</a>
+    <a *ngIf="auth.isAdmin()" routerLink="/home-admin">Admin</a>
   </nav>
   <div class="nav-right">
     <app-notifications-bell></app-notifications-bell>
