@@ -14,6 +14,7 @@ provider:
     USER_POOL_ID: eu-central-1_AHb0aoBcX
     CLIENT_ID: 7gvfvp342fp6i6bdtsjrgl6a47
     TABLE_NAME: Music
+    NOTIFS_TABLE: Notifications
     BUCKET_NAME: ${self:custom.bucketName}
     ALLOWED_ORIGIN: http://localhost:4200
 
@@ -35,6 +36,8 @@ provider:
         - "arn:aws:dynamodb:eu-central-1:*:table/Music"
         - "arn:aws:dynamodb:eu-central-1:*:table/Music/index/*"
         - "arn:aws:dynamodb:eu-central-1:*:table/Subscriptions"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/Notifications"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/Subscriptions/index/ByTarget"
         - "arn:aws:s3:::${self:custom.bucketName}"
         - "arn:aws:s3:::${self:custom.bucketName}/*"
 
@@ -281,6 +284,38 @@ functions:
             headers: [ Content-Type, Authorization ]
             allowCredentials: true
 
+  getArtistDetails:
+    handler: handlers/content.get_artist_details
+    events:
+      - http:
+          path: artists/{artistId}
+          method: get
+          request:
+            parameters:
+              paths:
+                artistId: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+
+  getAlbumDetails:
+    handler: handlers/content.get_album_details
+    events:
+      - http:
+          path: albumDetails/{albumId}
+          method: get
+          request:
+            parameters:
+              paths:
+                albumId: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+
   updateArtist:
     handler: handlers/content.update_artist
     events:
@@ -349,6 +384,74 @@ functions:
           method: options
           cors: true
 
+  notifyDispatcher:
+    handler: handlers/notify_dispatcher.handler
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [ MusicTable, StreamArn ]
+          batchSize: 50
+          startingPosition: LATEST
+    environment:
+      SUBS_TABLE: Subscriptions
+      SUBS_GSI: ByTarget
+      NOTIF_TABLE: Notifications
+
+  listNotifications:
+    handler: handlers/notifications.list_notifications
+    events:
+      - http:
+          path: user/notifications
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http: # 👈 PRE-FLIGHT (bez auth)
+          path: user/notifications
+          method: options
+          cors: true
+
+  markNotificationRead:
+    handler: handlers/notifications.mark_read
+    events:
+      - http:
+          path: user/notifications/read
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http: # 👈 PRE-FLIGHT
+          path: user/notifications/read
+          method: options
+          cors: true
+
+  markAllNotificationsRead:
+    handler: handlers/notifications.mark_all_read
+    events:
+      - http:
+          path: user/notifications/read-all
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http: # 👈 PRE-FLIGHT
+          path: user/notifications/read-all
+          method: options
+          cors: true
+
 resources:
   Resources:
     GatewayResponseDefault4XX:
@@ -400,6 +503,8 @@ resources:
       Properties:
         TableName: Music
         BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
         AttributeDefinitions:
           - { AttributeName: PK,     AttributeType: S }
           - { AttributeName: SK,     AttributeType: S }
@@ -453,5 +558,27 @@ resources:
               KeyType: HASH
             - AttributeName: targetKey
               KeyType: RANGE
+          GlobalSecondaryIndexes: # 👈 DODAJ OVO
+            - IndexName: ByTarget
+              KeySchema:
+                - AttributeName: targetKey   # HASH po targetu
+                  KeyType: HASH
+                - AttributeName: userId      # RANGE po useru (stabilan sort)
+                  KeyType: RANGE
+              Projection:
+                ProjectionType: KEYS_ONLY
+
+    NotificationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Notifications
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: userId,  AttributeType: S }
+          - { AttributeName: notifId, AttributeType: S }
+        KeySchema:
+          - { AttributeName: userId,  KeyType: HASH }
+          - { AttributeName: notifId, KeyType: RANGE }
+
 plugins:
   - serverless-python-requirements

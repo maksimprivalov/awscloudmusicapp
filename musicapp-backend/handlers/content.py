@@ -1,4 +1,4 @@
-import os, json, uuid, random, urllib.parse
+import os, json, uuid, random, urllib.parse, traceback
 import boto3
 from datetime import datetime
 from typing import Optional, Dict
@@ -1161,3 +1161,176 @@ def update_artist(event, context):
         return cors_response(500, {"error": f"Mirror update failed: {e}"})
 
     return cors_response(200, {"message": "Artist updated", "artistId": artist_id})
+
+
+def _safe_num(x):
+    # Dynamo Decimal -> int/float, ili None
+    try:
+        from decimal import Decimal
+        if isinstance(x, Decimal):
+            return int(x) if x % 1 == 0 else float(x)
+    except Exception:
+        pass
+    return x
+
+def get_album_details(event, context):
+    try:
+        # CORS preflight
+        if (event.get("httpMethod") or "").upper() == "OPTIONS":
+            return cors_response(200, {})
+
+        path = (event.get("pathParameters") or {})
+        album_id = path.get("albumId") or path.get("id")
+        if not album_id:
+            return cors_response(400, {"error": "albumId path param required"})
+
+        # 1) Meta zapis: PK = ALBUM#<id>, SK = ALBUM
+        album_pk = f"ALBUM#{album_id}"
+        meta = music_table.get_item(Key={"PK": album_pk, "SK": "ALBUM"}).get("Item")
+
+        # 2) Pesme u albumu: GSI2PK = ALBUM#<id>
+        q = music_table.query(
+            IndexName="GSI2",
+            KeyConditionExpression=Key("GSI2PK").eq(album_pk)
+        )
+        items = q.get("Items", [])
+
+        # sortiranje po GSI2SK (TRACK#NNN) ili po trackNo
+        def sort_key(it):
+            g2 = str(it.get("GSI2SK") or "")
+            if g2.startswith("TRACK#") and len(g2) >= 9:
+                # TRACK#001 → 1
+                try:
+                    return int(g2.split("#", 1)[1])
+                except Exception:
+                    pass
+            tn = _safe_num(it.get("trackNo"))
+            return tn if isinstance(tn, (int, float)) else 10**9  # nepoznati na kraj
+
+        items.sort(key=sort_key)
+
+        tracks = []
+        for it in items:
+            pk = str(it.get("PK", ""))
+            cid = it.get("contentId") or (pk.split("#", 1)[1] if pk.startswith("CONTENT#") else None)
+            tracks.append({
+                "contentId": cid,
+                "name": it.get("name"),
+                "trackNo": _safe_num(it.get("trackNo")),
+                "albumId": album_id,
+                "durationSeconds": _safe_num(it.get("durationSeconds")),
+            })
+
+        # 3) Ako nema meta – pokušaj izvesti minimum iz pesama (fallback)
+        cover_url = None
+        if not meta:
+            if not items:
+                return cors_response(404, {"error": "Album not found"})
+            # izvedi naziv / žanr iz pesama
+            # (ako nema ničega, neka ostane None/unknown)
+            name = None
+            for it in items:
+                if it.get("albumName"):
+                    name = it["albumName"]
+                    break
+            primary_genre = None
+            for it in items:
+                if it.get("primaryGenre"):
+                    primary_genre = it["primaryGenre"]
+                    break
+
+            album = {
+                "albumId": album_id,
+                "name": name or album_id,
+                "primaryGenre": primary_genre,
+                "description": None
+            }
+            return cors_response(200, {"album": album, "tracks": tracks})
+
+        # 4) Ako ima meta – pripremi odgovor + cover URL ako postoji
+        album = {
+            "albumId": album_id,
+            "name": meta.get("name") or album_id,
+            "primaryGenre": meta.get("primaryGenre"),
+            "description": meta.get("description"),
+        }
+
+        cover_key = meta.get("coverS3Key")
+        if BUCKET and cover_key:
+            try:
+                cover_url = s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": BUCKET, "Key": cover_key},
+                    ExpiresIn=3600
+                )
+            except Exception:
+                cover_url = None
+
+        return cors_response(200, {"album": album, "tracks": tracks, "coverUrl": cover_url})
+
+    except Exception as e:
+        print("[get_album_details] ERROR\n", traceback.format_exc())
+        return cors_response(500, {"error": "Internal Server Error", "detail": str(e)})
+
+
+def get_artist_details(event, context):
+    try:
+        # CORS preflight
+        if (event.get("httpMethod") or "").upper() == "OPTIONS":
+            return cors_response(200, {})
+
+        path = (event.get("pathParameters") or {})
+        artist_id = path.get("artistId") or path.get("id")
+        if not artist_id:
+            return cors_response(400, {"error": "artistId path param required"})
+
+        # 1) meta iz Artists
+        meta = artists_table.get_item(Key={"artistId": artist_id}).get("Item")
+
+        # 1b) fallback mirror iz Music
+        if not meta:
+            mirror = music_table.get_item(Key={"PK": f"ARTIST#{artist_id}", "SK": "ARTIST"}).get("Item")
+            if mirror:
+                meta = {
+                    "artistId": artist_id,
+                    "name": mirror.get("name"),
+                    "genres": mirror.get("genres") or ([mirror.get("primaryGenre")] if mirror.get("primaryGenre") else []),
+                    "bio": None,
+                    "primaryGenre": mirror.get("primaryGenre")
+                }
+
+        if not meta:
+            return cors_response(404, {"error": "Artist not found"})
+
+        artist = {
+            "artistId": artist_id,
+            "name": meta.get("name"),
+            "genres": meta.get("genres") or [],
+            "primaryGenre": meta.get("primaryGenre") or ((meta.get("genres") or [None])[0]),
+            "bio": meta.get("bio")
+        }
+
+        # 2) pesme gde je primarni artist (GSI2)
+        q = music_table.query(
+            IndexName="GSI2",
+            KeyConditionExpression=Key("GSI2PK").eq(f"ARTIST#{artist_id}")
+        )
+        items = q.get("Items", [])
+        tracks = []
+        for it in items:
+            pk = str(it.get("PK", ""))
+            cid = it.get("contentId") or (pk.split("#", 1)[1] if pk.startswith("CONTENT#") else None)
+            tracks.append({
+                "contentId": cid,
+                "name": it.get("name"),
+                "trackNo": it.get("trackNo"),
+                "albumId": it.get("albumId"),
+                "durationSeconds": it.get("durationSeconds"),
+            })
+
+        return cors_response(200, {"artist": artist, "tracks": tracks})
+
+    except Exception as e:
+        print("[get_artist_details] ERROR\n", traceback.format_exc())
+        # vrati čitljiv 500 umesto “golog” 502
+        return cors_response(500, {"error": "Internal Server Error", "detail": str(e)})
