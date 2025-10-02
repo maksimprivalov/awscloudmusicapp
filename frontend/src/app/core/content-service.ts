@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class ContentService {
   subscribeToContent(targetType: string, targetId: string) {
-    return this.http.post(`${environment.apiBase}/subscriptions`, {
+    return this.http.post(`${this.base}/user/subscribe`, {
       targetType,
       targetId
     });
