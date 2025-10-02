@@ -8,7 +8,15 @@
     <a routerLink="/content" routerLinkActive="active">All music</a>
     <a routerLink="/subscriptions" routerLinkActive="active">My subscriptions</a>
   </nav>
-  <div class="navbar-right">
+  <div class="nav-right">
     <app-notifications-bell></app-notifications-bell>
+
+    <ng-container *ngIf="auth.isAuthenticated(); else loggedOut">
+      <button class="btn secondary" (click)="logout()">Logout</button>
+    </ng-container>
+
+    <ng-template #loggedOut>
+      <a routerLink="/login" class="btn">Login</a>
+    </ng-template>
   </div>
 </header>

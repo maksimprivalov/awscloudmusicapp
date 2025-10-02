@@ -28,7 +28,7 @@ const routes: Routes = [
   { path: 'content/:id', component: ContentDetailComponent },
   { path: 'admin/artists/create', component: CreateArtistComponent, canActivate: [AdminGuard] },
   { path: 'admin/upload', component: AdminUploadComponent, canActivate: [AdminGuard] },
-  { path: 'subscriptions', component: SubscriptionsComponent },
+  { path: 'subscriptions', component: SubscriptionsComponent, canActivate: [AuthGuard] },
 
   { path: '', pathMatch: 'full', redirectTo: 'discover' },
   { path: '**', redirectTo: 'login' },

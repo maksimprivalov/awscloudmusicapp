@@ -49,3 +49,38 @@
   align-items: center;
   gap: 12px;
 }
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header a {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.header a:hover {
+  color: var(--accent);
+}
+
+.header .logo {
+  font-weight: 700;
+  font-size: 18px;
+  margin-right: 24px;
+}
