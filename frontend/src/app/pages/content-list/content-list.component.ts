@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 @Component({
   selector: 'app-content-list',
   templateUrl: './content-list.component.html',
+  styleUrls: ['./content-list.component.css'],
   standalone: false
 })
 export class ContentListComponent implements OnInit {
