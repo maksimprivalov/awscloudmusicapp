@@ -1,0 +1,83 @@
+/* Контейнер */
+.app-container {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* Основная карточка */
+.card {
+  width: min(1100px, 95vw);
+}
+
+/* Сетка для списка */
+ul.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+/* Малые карточки */
+.card-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: #fff;
+  border-radius: var(--radius);
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.card-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+}
+
+/* Внутренняя сетка */
+.form-grid {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Текст */
+.card-sm strong {
+  font-size: 15px;
+}
+
+.card-sm small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Кнопки */
+.actions button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(252,158,79,.35);
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.actions button:hover {
+  background: #ff8a2d;
+  transform: translateY(-1px);
+}
+
+/* Плеер */
+audio {
+  width: 100%;
+  margin-top: 8px;
+  outline: none;
+}

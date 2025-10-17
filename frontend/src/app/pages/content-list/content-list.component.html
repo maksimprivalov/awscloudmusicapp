@@ -1,0 +1,28 @@
+<div class="app-container">
+  <section class="card">
+    <h1>📜 Sadržaj</h1>
+
+    <div *ngIf="loading" class="msg info">⏳ Učitavanje...</div>
+    <div *ngIf="!loading && !items.length" class="msg error">
+      ⚠️ Nema sadržaja
+    </div>
+
+    <ul class="grid">
+      <li *ngFor="let it of items" class="card-sm">
+        <div class="form-grid">
+          <div>
+            <strong>{{ it.name }}</strong><br />
+            <small>{{ it.fileType }} • {{ it.fileSize }} B</small>
+          </div>
+
+          <div class="actions">
+            <button (click)="open(it.contentId)">Detalji</button>
+
+          </div>
+        </div>
+
+        <audio *ngIf="it.playUrl" [src]="it.playUrl" controls></audio>
+      </li>
+    </ul>
+  </section>
+</div>

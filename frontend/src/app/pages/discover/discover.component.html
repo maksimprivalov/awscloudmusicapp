@@ -1,0 +1,178 @@
+<div class="app-container">
+  <section class="card" style="width:min(1080px, 96vw);">
+    <h1>Discover</h1>
+    <p class="sub">Filter by genre and type</p>
+
+    <form class="toolbar" [formGroup]="form" (ngSubmit)="search(true)">
+      <div class="input">
+        <label for="genre">Genre</label>
+        <select id="genre" formControlName="genre">
+          <option value="">-- choose --</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="lofi">Lo-fi</option>
+          <option value="rap">Rap</option>
+          <option value="jazz">Jazz</option>
+          <option value="electronic">Electronic</option>
+          <option value="metal">Metal</option>
+          <option value="folk">Folk</option>
+        </select>
+      </div>
+
+      <div class="input">
+        <label for="type">Type</label>
+        <select id="type" formControlName="type">
+          <option value="">All</option>
+          <option value="album">Album</option>
+          <option value="artist">Artist</option>
+        </select>
+      </div>
+
+      <div class="input">
+        <label for="limit">Limit</label>
+        <input id="limit" type="number" min="1" max="50" formControlName="limit" />
+      </div>
+
+      <div style="margin-left:auto;">
+        <button class="btn" type="submit" [disabled]="loading">Search</button>
+      </div>
+    </form>
+
+    <div *ngIf="loading" class="msg info">Loading results…</div>
+    <div *ngIf="error" class="msg error">{{ error }}</div>
+
+    <div class="grid" *ngIf="!loading && items?.length">
+      <article class="card-sm" *ngFor="let it of items">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <strong>{{ it.name }}</strong>
+          <span class="badge">{{ it.entityType }}</span>
+        </div>
+        <div style="color:var(--muted); font-size:13px; margin-top:6px;">
+          {{ it.primaryGenre || '—' }}
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn secondary" type="button" (click)="openDetails(it)">Details</button>
+        </div>
+      </article>
+    </div>
+    <!-- DETAILS PANEL -->
+    <aside *ngIf="showDetails" class="details-panel card">
+      <header class="details-header">
+        <h2>Details</h2>
+        <button class="btn secondary" type="button" (click)="closeDetails()">Close</button>
+      </header>
+
+      <div *ngIf="detailsLoading" class="msg info">Loading…</div>
+
+      <!-- ========== ALBUM ========== -->
+      <ng-container *ngIf="!detailsLoading && detailsType==='ALBUM' && albumDetails">
+        <div class="details-grid">
+          <section class="meta">
+            <div class="title-row">
+              <h3>{{ albumDetails.album.name }}</h3>
+              <span class="badge">ALBUM</span>
+            </div>
+
+            <p class="muted">
+              Primary genre:
+              <strong>{{ albumDetails.album.primaryGenre || '—' }}</strong>
+            </p>
+
+            <div class="block">
+              <h4>Description</h4>
+              <p class="text">{{ albumDetails.album.description || '—' }}</p>
+            </div>
+
+            <div class="actions">
+              <button class="btn" type="button"
+                      (click)="subscribe(albumDetails.album)"
+                      [disabled]="isSubscribing">
+                {{ isSubscribing ? 'Radim…' : 'Pretplati se' }}
+              </button>
+
+              <div *ngIf="subStatus" class="sub-status"
+                   [class.ok]="subStatus.startsWith('✅')"
+                   [class.err]="subStatus.startsWith('❌')">
+                {{ subStatus }}
+              </div>
+            </div>
+
+          </section>
+
+          <section class="tracks">
+            <h4>Tracks</h4>
+            <div *ngIf="!albumDetails.tracks?.length" class="msg info">No tracks.</div>
+            <ol *ngIf="albumDetails.tracks?.length" class="tracklist">
+              <li *ngFor="let t of albumDetails.tracks">
+                <span class="num" *ngIf="t.trackNo != null">{{ t.trackNo }}.</span>
+                <span class="name">{{ t.name }}</span>
+                <span class="dur" *ngIf="t.durationSeconds">({{ t.durationSeconds }}s)</span>
+              </li>
+            </ol>
+          </section>
+        </div>
+      </ng-container>
+
+      <!-- ========== ARTIST ========== -->
+      <ng-container *ngIf="!detailsLoading && detailsType==='ARTIST' && artistDetails">
+        <div class="details-grid">
+          <section class="meta">
+            <div class="title-row">
+              <h3>{{ artistDetails.artist.name }}</h3>
+              <span class="badge">ARTIST</span>
+            </div>
+
+            <p class="muted">
+              Primary genre:
+              <strong>{{ artistDetails.artist.primaryGenre || '—' }}</strong>
+              <span *ngIf="(artistDetails.artist.genres?.length ?? 0) > 0">
+            • Genres: {{ (artistDetails.artist.genres ?? []).join(', ') }}
+          </span>
+            </p>
+
+            <div class="block" *ngIf="artistDetails.artist.bio">
+              <h4>Bio</h4>
+              <p class="text">{{ artistDetails.artist.bio }}</p>
+            </div>
+
+            <div class="actions">
+              <button class="btn" type="button"
+                      (click)="subscribe(artistDetails.artist)"
+                      [disabled]="isSubscribing">
+                {{ isSubscribing ? 'Radim…' : 'Pretplati se' }}
+              </button>
+
+              <div *ngIf="subStatus" class="sub-status"
+                   [class.ok]="subStatus.startsWith('✅')"
+                   [class.err]="subStatus.startsWith('❌')">
+                {{ subStatus }}
+              </div>
+            </div>
+
+          </section>
+
+          <section class="tracks">
+            <h4>Tracks</h4>
+            <div *ngIf="!artistDetails.tracks?.length" class="msg info">No tracks.</div>
+            <ul *ngIf="artistDetails.tracks?.length" class="tracklist">
+              <li *ngFor="let t of artistDetails.tracks">
+                <span class="name">{{ t.name }}</span>
+                <span class="muted" *ngIf="t.albumId">({{ t.albumId }})</span>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </ng-container>
+    </aside>
+
+
+
+    <div *ngIf="!loading && (!items || !items.length)" class="msg info">
+      No results. Try adjusting filters.
+    </div>
+
+    <div class="pager" *ngIf="nextKey">
+      <button class="btn secondary" type="button" (click)="loadMore()" [disabled]="loading">Load more</button>
+    </div>
+  </section>
+</div>

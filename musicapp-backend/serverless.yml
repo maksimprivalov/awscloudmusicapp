@@ -1,0 +1,584 @@
+service: cloud-music-backend
+
+custom:
+  bucketName: music-content-${sls:stage}-${aws:accountId}
+  pythonRequirements:
+    dockerizePip: true
+    # slim: true   # можно включить позже
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: eu-central-1
+  environment:
+    USER_POOL_ID: eu-central-1_AHb0aoBcX
+    CLIENT_ID: 7gvfvp342fp6i6bdtsjrgl6a47
+    TABLE_NAME: Music
+    NOTIFS_TABLE: Notifications
+    BUCKET_NAME: ${self:custom.bucketName}
+    ALLOWED_ORIGIN: http://localhost:4200
+
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:GetItem"
+        - "dynamodb:Query"
+        - "dynamodb:Scan"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:DeleteItem"
+        - "dynamodb:BatchWriteItem"
+        - "s3:PutObject"
+        - "s3:GetObject"
+        - "s3:ListBucket"
+      Resource:
+        - "arn:aws:dynamodb:eu-central-1:*:table/Artists"
+        - "arn:aws:dynamodb:eu-central-1:*:table/Music"
+        - "arn:aws:dynamodb:eu-central-1:*:table/Music/index/*"
+        - "arn:aws:dynamodb:eu-central-1:*:table/Subscriptions"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/Notifications"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/Subscriptions/index/ByTarget"
+        - "arn:aws:s3:::${self:custom.bucketName}"
+        - "arn:aws:s3:::${self:custom.bucketName}/*"
+
+functions:
+  register:
+    handler: handlers/auth.register
+    events:
+      - http:
+          path: auth/register
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+
+  login:
+    handler: handlers/auth.login
+    events:
+      - http:
+          path: auth/login
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+
+  createArtist:
+    handler: handlers/admin.create_artist
+    events:
+      - http:
+          path: admin/artist
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  discover:
+    handler: handlers/content.discover
+    events:
+      - http:
+          path: discover
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  seed:
+    handler: handlers/content.seed
+    timeout: 29
+    events:
+      - http:
+          path: admin/seed
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  resetMusic:
+    handler: handlers/content.reset_music
+    events:
+      - http:
+          path: admin/reset-music
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  getUploadUrl:
+    handler: handlers/content.get_upload_url
+    events:
+      - http:
+          path: admin/content/upload-url
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  createContent:
+    handler: handlers/content.create_content
+    events:
+      - http:
+          path: admin/content
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  deleteContent:
+    handler: handlers/content.delete_content
+    events:
+      - http:
+          method: DELETE
+          path: admin/content/{contentId}
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  deleteAlbum:
+    handler: handlers/content.delete_album
+    events:
+      - http:
+          method: DELETE
+          path: admin/album/{albumId}
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  deleteArtist:
+    handler: handlers/content.delete_artist
+    events:
+      - http:
+          method: DELETE
+          path: admin/artist/{artistId}
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+
+  listContent:
+    handler: handlers/content.list_content
+    events:
+      - http:
+          path: content
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  getContent:
+    handler: handlers/content.get_content
+    events:
+      - http:
+          path: content/{id}
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  updateContent:
+    handler: handlers/content.update_content
+    events:
+      - http:
+          path: admin/content/update
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+
+  createAlbum:
+    handler: handlers/content.create_album
+    events:
+      - http:
+          path: admin/album
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  updateAlbum:
+    handler: handlers/content.update_album
+    events:
+      - http:
+          path: admin/album/update
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+
+  getAlbum:
+    handler: handlers/content.get_album
+    events:
+      - http:
+          path: album/{albumId}
+          method: get
+          request:
+            parameters:
+              paths:
+                albumId: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  getArtist:
+    handler: handlers/content.list_artists
+    events:
+      - http:
+          path: artists
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+  getArtistDetails:
+    handler: handlers/content.get_artist_details
+    events:
+      - http:
+          path: artists/{artistId}
+          method: get
+          request:
+            parameters:
+              paths:
+                artistId: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+
+  getAlbumDetails:
+    handler: handlers/content.get_album_details
+    events:
+      - http:
+          path: albumDetails/{albumId}
+          method: get
+          request:
+            parameters:
+              paths:
+                albumId: true
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+
+
+  updateArtist:
+    handler: handlers/content.update_artist
+    events:
+      - http:
+          path: admin/artist/update
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+            
+  subscribe:
+    handler: handlers/subscriptions.subscribe
+    events:
+      - http:
+          path: user/subscribe
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http:   # 🔥 preflight
+          path: user/subscribe
+          method: options
+          cors: true
+
+  unsubscribe:
+    handler: handlers/subscriptions.unsubscribe
+    events:
+      - http:
+          path: user/unsubscribe
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http:
+          path: user/unsubscribe
+          method: options
+          cors: true
+
+  listSubscriptions:
+    handler: handlers/subscriptions.list_subscriptions
+    events:
+      - http:
+          path: user/subscriptions
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http:
+          path: user/subscriptions
+          method: options
+          cors: true
+
+  notifyDispatcher:
+    handler: handlers/notify_dispatcher.handler
+    events:
+      - stream:
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [ MusicTable, StreamArn ]
+          batchSize: 50
+          startingPosition: LATEST
+    environment:
+      SUBS_TABLE: Subscriptions
+      SUBS_GSI: ByTarget
+      NOTIF_TABLE: Notifications
+
+  listNotifications:
+    handler: handlers/notifications.list_notifications
+    events:
+      - http:
+          path: user/notifications
+          method: get
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http: # 👈 PRE-FLIGHT (bez auth)
+          path: user/notifications
+          method: options
+          cors: true
+
+  markNotificationRead:
+    handler: handlers/notifications.mark_read
+    events:
+      - http:
+          path: user/notifications/read
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http: # 👈 PRE-FLIGHT
+          path: user/notifications/read
+          method: options
+          cors: true
+
+  markAllNotificationsRead:
+    handler: handlers/notifications.mark_all_read
+    events:
+      - http:
+          path: user/notifications/read-all
+          method: post
+          cors:
+            origin: 'http://localhost:4200'
+            headers: [ Content-Type, Authorization ]
+            allowCredentials: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+      - http: # 👈 PRE-FLIGHT
+          path: user/notifications/read-all
+          method: options
+          cors: true
+
+resources:
+  Resources:
+    GatewayResponseDefault4XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseType: DEFAULT_4XX
+        RestApiId: { Ref: ApiGatewayRestApi }
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'http://localhost:4200'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+
+    GatewayResponseDefault5XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseType: DEFAULT_5XX
+        RestApiId: { Ref: ApiGatewayRestApi }
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'http://localhost:4200'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Users
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    ArtistsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Artists
+        AttributeDefinitions:
+          - AttributeName: artistId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: artistId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    MusicTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Music
+        BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        AttributeDefinitions:
+          - { AttributeName: PK,     AttributeType: S }
+          - { AttributeName: SK,     AttributeType: S }
+          - { AttributeName: GSI1PK, AttributeType: S }
+          - { AttributeName: GSI1SK, AttributeType: S }
+          - { AttributeName: GSI2PK, AttributeType: S }
+          - { AttributeName: GSI2SK, AttributeType: S }
+        KeySchema:
+          - { AttributeName: PK, KeyType: HASH }
+          - { AttributeName: SK, KeyType: RANGE }
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - { AttributeName: GSI1PK, KeyType: HASH }
+              - { AttributeName: GSI1SK, KeyType: RANGE }
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes: [ name, entityType, artistId, albumId, primaryGenre ]
+          - IndexName: GSI2
+            KeySchema:
+              - { AttributeName: GSI2PK, KeyType: HASH }
+              - { AttributeName: GSI2SK, KeyType: RANGE }
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes: [ name, trackNo, entityType ]
+
+    MusicContentBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bucketName}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins: ['http://localhost:4200']
+              AllowedMethods: ['GET','PUT','POST']
+              AllowedHeaders: ['*']
+              ExposedHeaders: ['ETag']
+              MaxAge: 3000
+
+    SubscriptionsTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+          TableName: Subscriptions
+          BillingMode: PAY_PER_REQUEST
+          AttributeDefinitions:
+            - AttributeName: userId
+              AttributeType: S
+            - AttributeName: targetKey
+              AttributeType: S
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: targetKey
+              KeyType: RANGE
+          GlobalSecondaryIndexes: # 👈 DODAJ OVO
+            - IndexName: ByTarget
+              KeySchema:
+                - AttributeName: targetKey   # HASH po targetu
+                  KeyType: HASH
+                - AttributeName: userId      # RANGE po useru (stabilan sort)
+                  KeyType: RANGE
+              Projection:
+                ProjectionType: KEYS_ONLY
+
+    NotificationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Notifications
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: userId,  AttributeType: S }
+          - { AttributeName: notifId, AttributeType: S }
+        KeySchema:
+          - { AttributeName: userId,  KeyType: HASH }
+          - { AttributeName: notifId, KeyType: RANGE }
+
+plugins:
+  - serverless-python-requirements

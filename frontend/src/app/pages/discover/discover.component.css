@@ -1,0 +1,80 @@
+/* Panel container */
+.details-panel {
+  width: min(1100px, 96vw);
+  margin: 18px auto 0 auto;
+  padding: 18px 18px 22px;
+}
+
+/* Header */
+.details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.details-header h2 { margin: 0; }
+
+/* Grid layout */
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+@media (min-width: 860px) {
+  .details-grid {
+    grid-template-columns: 1.05fr 1fr; /* meta | tracks */
+    gap: 24px;
+  }
+}
+
+/* Meta column */
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.title-row h3 { margin: 0; }
+
+.muted {
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+  margin: 6px 0 0 0;
+}
+
+.block { margin-top: 12px; }
+.block h4 { margin: 0 0 6px 0; }
+.text { margin: 0; line-height: 1.5; }
+
+/* Actions */
+.actions { margin-top: 16px; }
+.actions .btn { min-width: 160px; }
+
+/* Tracks column */
+.tracks h4 { margin: 0 0 8px 0; }
+.tracklist {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  max-height: 320px;      /* skrol ako ima puno pesama */
+  overflow: auto;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 10px;
+}
+.tracklist li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.tracklist li:last-child { border-bottom: 0; }
+.tracklist .num { width: 28px; text-align: right; opacity: 0.65; }
+.tracklist .name { font-weight: 500; }
+.tracklist .dur { color: var(--muted, #6b7280); font-size: 12px; }
+
+/* Small polish on cards grid spacing */
+.grid { row-gap: 18px; }

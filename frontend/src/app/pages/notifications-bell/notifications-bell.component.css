@@ -1,0 +1,79 @@
+:host {
+  position: fixed;
+  top: 12px; right: 14px;
+  z-index: 1000;
+}
+
+/* Ikonica zvona – koristi neutralni stil, ostavi tvoj .btn netaknut */
+.icon-btn {
+  position: relative;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(0,0,0,.12);
+  cursor: pointer;
+}
+.icon-btn.active { outline: 2px solid #ffd9b7; }
+
+.bell-badge {
+  position: absolute; top: -4px; right: -4px;
+  font-size: 11px; font-weight: 700;
+}
+
+/* Pozadina za zatvaranje panela */
+.notif-backdrop {
+  position: fixed; inset: 0; z-index: 999;
+  background: transparent;
+}
+
+/* Popover u tvom card stilu */
+.notif-popover {
+  position: fixed;
+  top: 60px; right: 14px; z-index: 1001;
+  width: min(420px, 92vw);
+  padding: 0;
+  overflow: hidden;
+}
+
+.popover-header, .popover-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.popover-footer { border-top: 1px solid rgba(0,0,0,.06); border-bottom: 0; }
+
+.notif-list {
+  list-style: none; margin: 0; padding: 0;
+  max-height: 60vh; overflow: auto;
+}
+
+.notif-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px dashed rgba(0,0,0,.06);
+}
+.notif-item.unread { background: #fffaf5; }
+.notif-item:last-child { border-bottom: 0; }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background:#ff7e33; margin-top: 8px; }
+.text { flex: 1; min-width: 0; }
+.row { display: flex; align-items: center; gap: 8px; }
+.title { font-weight: 700; }
+.body {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--muted, #555);
+}
+
+.empty {
+  display: grid; place-items: center; gap: 6px;
+  padding: 28px 16px;
+}
+.emoji { font-size: 28px; }
+
+/* Pomoćne (ako nemaš već): */
+.badge.light { background: #eef4ff; color:#2b59ff; }
+.btn.link { background: none; border: 0; color: #ff7e33; }
+.btn.sm, .btn.link.sm { font-size: 12px; padding: 4px 8px; }
+.small { font-size: 12px; }
+
