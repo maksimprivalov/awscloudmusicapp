@@ -40,41 +40,6 @@ def _decode_last_key(s: Optional[str]) -> Optional[Dict]:
     except Exception:
         return None
 
-def _convert_decimals(x):
-    if isinstance(x, list):
-        return [_convert_decimals(v) for v in x]
-    if isinstance(x, dict):
-        return {k: _convert_decimals(v) for k, v in x.items()}
-    if isinstance(x, Decimal):
-        # int ako je ceo broj, inače float
-        return int(x) if x % 1 == 0 else float(x)
-    return x
-
-def cors_response(status, body):
-    try:
-        safe_body = _convert_decimals(body)
-        return {
-            "statusCode": status,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*",
-                "Access-Control-Allow-Methods": "*",
-            },
-            "body": json.dumps(safe_body, ensure_ascii=False),
-        }
-    except Exception:
-        # Fallback da NIKAD ne padne zbog serializacije
-        print("cors_response serialization error:\n", traceback.format_exc())
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "*",
-                "Access-Control-Allow-Methods": "*",
-            },
-            "body": json.dumps({"error": "Serialization failure"}, ensure_ascii=False),
-        }
-
 def _err(status, msg, exc=None):
     if exc:
         print(f"[ERROR] {msg}\n{traceback.format_exc()}")
@@ -273,6 +238,9 @@ def discover(event, context):
 
 #                   4) Seed / Reset (admin)
 def seed(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+
     import time, logging
     logging.getLogger().setLevel("INFO")
 
@@ -390,6 +358,9 @@ def seed(event, context):
         return cors_response(500, {"message": "Internal Server Error", "detail": str(e)})
 
 def reset_music(event, context):
+    if not _is_admin(event):
+        return cors_response(403, {"error": "Admins only"})
+
     import time, logging
     logging.getLogger().setLevel("INFO")
 
