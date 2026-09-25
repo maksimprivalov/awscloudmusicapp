@@ -1,5 +1,6 @@
 import os
 import json
+import traceback
 from decimal import Decimal
 
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "http://localhost:4200")
@@ -33,6 +34,14 @@ def bad_request(msg): return response(400, {"error": msg})
 def forbidden(msg="Forbidden"): return response(403, {"error": msg})
 def not_found(msg="Not found"): return response(404, {"error": msg})
 def server_error(msg="Internal Server Error"): return response(500, {"error": msg})
+
+def err(status, msg, exc=None):
+    if exc:
+        print(f"[ERROR] {msg}\n{traceback.format_exc()}")
+    payload = {"error": msg}
+    if os.getenv("STAGE", "dev") == "dev" and exc:
+        payload["details"] = str(exc)
+    return response(status, payload)
 
 def preflight(event=None):
 

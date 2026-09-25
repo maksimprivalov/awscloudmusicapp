@@ -5,6 +5,8 @@ from datetime import datetime
 
 import boto3
 from utils.cors import response as cors_response
+from utils.authz import is_admin
+from utils.text import slug
 
 dynamodb = boto3.resource("dynamodb")
 # bolje preko env var da se poklapa sa serverless.yml
@@ -14,19 +16,8 @@ ARTISTS_TABLE = os.environ.get("ARTISTS_TABLE", "Artists")
 music_table = dynamodb.Table(TABLE_NAME)
 artists_table = dynamodb.Table(ARTISTS_TABLE)
 
-def _is_admin(event) -> bool:
-    """Admin from Cognito JWT (through API Gateway Authorizer)."""
-    claims = (event.get("requestContext", {})
-                    .get("authorizer", {})
-                    .get("claims", {})) or {}
-    groups = claims.get("cognito:groups", "")
-    return "Admin" in groups
-
-def _slug(s: str) -> str:
-    return "-".join((s or "").strip().lower().split())
-
 def create_artist(event, context):
-    if not _is_admin(event):
+    if not is_admin(event):
         return cors_response(403, {"error": "Admins only"})
 
     body = json.loads(event.get("body") or "{}")
@@ -66,7 +57,7 @@ def create_artist(event, context):
             "createdAt": now,
             "updatedAt": now,
             "GSI1PK": f"GENRE#{primary_genre}",
-            "GSI1SK": f"TYPE#ARTIST#NAME#{_slug(name)}",
+            "GSI1SK": f"TYPE#ARTIST#NAME#{slug(name)}",
         }
         # zaštita od slučajnog overwrite-a
         music_table.put_item(

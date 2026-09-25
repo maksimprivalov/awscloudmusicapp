@@ -88,7 +88,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   discover:
-    handler: handlers/content.discover
+    handler: handlers/discover.discover
     events:
       - http:
           path: discover
@@ -99,7 +99,7 @@ functions:
             allowCredentials: true
 
   seed:
-    handler: handlers/content.seed
+    handler: handlers/seed.seed
     timeout: 29
     events:
       - http:
@@ -114,7 +114,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   resetMusic:
-    handler: handlers/content.reset_music
+    handler: handlers/seed.reset_music
     events:
       - http:
           path: admin/reset-music
@@ -128,7 +128,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   getUploadUrl:
-    handler: handlers/content.get_upload_url
+    handler: handlers/tracks.get_upload_url
     events:
       - http:
           path: admin/content/upload-url
@@ -142,7 +142,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   createContent:
-    handler: handlers/content.create_content
+    handler: handlers/tracks.create_content
     events:
       - http:
           path: admin/content
@@ -156,7 +156,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   deleteContent:
-    handler: handlers/content.delete_content
+    handler: handlers/tracks.delete_content
     events:
       - http:
           method: DELETE
@@ -170,7 +170,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   deleteAlbum:
-    handler: handlers/content.delete_album
+    handler: handlers/albums.delete_album
     events:
       - http:
           method: DELETE
@@ -184,7 +184,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   deleteArtist:
-    handler: handlers/content.delete_artist
+    handler: handlers/artists.delete_artist
     events:
       - http:
           method: DELETE
@@ -199,7 +199,7 @@ functions:
 
 
   listContent:
-    handler: handlers/content.list_content
+    handler: handlers/tracks.list_content
     events:
       - http:
           path: content
@@ -210,7 +210,7 @@ functions:
             allowCredentials: true
 
   getContent:
-    handler: handlers/content.get_content
+    handler: handlers/tracks.get_content
     events:
       - http:
           path: content/{id}
@@ -225,7 +225,7 @@ functions:
             allowCredentials: true
 
   updateContent:
-    handler: handlers/content.update_content
+    handler: handlers/tracks.update_content
     events:
       - http:
           path: admin/content/update
@@ -240,7 +240,7 @@ functions:
 
 
   createAlbum:
-    handler: handlers/content.create_album
+    handler: handlers/albums.create_album
     events:
       - http:
           path: admin/album
@@ -254,7 +254,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   updateAlbum:
-    handler: handlers/content.update_album
+    handler: handlers/albums.update_album
     events:
       - http:
           path: admin/album/update
@@ -268,7 +268,7 @@ functions:
             arn: ${self:custom.userPoolArn}
 
   getAlbum:
-    handler: handlers/content.get_album
+    handler: handlers/albums.get_album
     events:
       - http:
           path: album/{albumId}
@@ -283,7 +283,7 @@ functions:
             allowCredentials: true
 
   getArtist:
-    handler: handlers/content.list_artists
+    handler: handlers/artists.list_artists
     events:
       - http:
           path: artists
@@ -294,7 +294,7 @@ functions:
             allowCredentials: true
 
   getArtistDetails:
-    handler: handlers/content.get_artist_details
+    handler: handlers/artists.get_artist_details
     events:
       - http:
           path: artists/{artistId}
@@ -310,7 +310,7 @@ functions:
 
 
   getAlbumDetails:
-    handler: handlers/content.get_album_details
+    handler: handlers/albums.get_album_details
     events:
       - http:
           path: albumDetails/{albumId}
@@ -326,7 +326,7 @@ functions:
 
 
   updateArtist:
-    handler: handlers/content.update_artist
+    handler: handlers/artists.update_artist
     events:
       - http:
           path: admin/artist/update
