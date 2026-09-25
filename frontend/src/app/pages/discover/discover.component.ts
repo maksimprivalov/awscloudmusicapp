@@ -6,8 +6,8 @@ import {
   ArtistDetails,
   DiscoverItem,
   DiscoverService
-} from './discover.service';
-import {ContentService} from '../../core/content-service';
+} from '../../core/discover.service';
+import {ContentService} from '../../core/content.service';
 
 @Component({
   selector: 'app-discover',

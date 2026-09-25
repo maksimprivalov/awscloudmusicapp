@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import {FormBuilder, FormGroup, Validators} from '@angular/forms';
-import {ArtistService} from './artist.service';
-import {ArtistCreateRequest} from './artist.model';
+import {ArtistService, ArtistCreateRequest} from '../../core/artist.service';
 
 
 @Component({

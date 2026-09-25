@@ -2,8 +2,16 @@ import { Injectable } from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import { map } from 'rxjs/operators';
 import {forkJoin, Observable} from 'rxjs';
-import {TrackDto} from './albums-table.component';
-import {environment} from '../../../environments/environment';
+import {environment} from '../../environments/environment';
+
+export interface TrackDto {
+  contentId: string;
+  name: string;
+  albumId?: string | null;
+  trackNo?: number | null;
+  artists?: string[];
+  genres?: string[];
+}
 
 export interface UpdateAlbumPayload {
   albumId: string;

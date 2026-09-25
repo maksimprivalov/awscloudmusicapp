@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { ContentService } from '../../core/content-service';
+import { ContentService } from '../../core/content.service';
 
 @Component({
   selector: 'app-admin-upload',

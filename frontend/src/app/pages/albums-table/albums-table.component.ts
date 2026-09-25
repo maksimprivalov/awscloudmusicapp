@@ -1,18 +1,9 @@
 // albums-table.component.ts
 import {Component, OnInit} from '@angular/core';
-import {MusicService} from './music.service';
+import {MusicService, TrackDto} from '../../core/music.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
-
-export interface TrackDto {
-  contentId: string;
-  name: string;
-  albumId?: string | null;
-  trackNo?: number | null;
-  artists?: string[];
-  genres?: string[];
-}
 
 export interface AlbumRow {
   albumId: string;
