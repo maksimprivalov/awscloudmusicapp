@@ -1,5 +1,5 @@
 import {Component, OnInit} from '@angular/core';
-import {ArtistDto, ArtistService, UpdateArtistPayload} from './artist.service';
+import {ArtistDto, ArtistService, UpdateArtistPayload} from '../../core/artist.service';
 import {HttpErrorResponse} from '@angular/common/http';
 import {finalize} from 'rxjs/operators';
 

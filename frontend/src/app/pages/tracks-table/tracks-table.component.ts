@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { finalize, catchError, of, forkJoin } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MusicService, TrackRow, UpdateTrackPayload } from '../albums-table/music.service'; // prilagodi putanju
+import { MusicService, TrackRow, UpdateTrackPayload } from '../../core/music.service';
 
 type SortKey = 'name' | 'contentId' | 'trackNo';
 

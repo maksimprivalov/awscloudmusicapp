@@ -1,6 +1,17 @@
 service: cloud-music-backend
 
+useDotenv: true
+
 custom:
+  allowedOrigin: http://localhost:4200
+  cors:
+    origin: ${self:custom.allowedOrigin}
+    headers: [ Content-Type, Authorization ]
+    allowCredentials: true
+  authorizer:
+    type: COGNITO_USER_POOLS
+    arn: ${self:custom.userPoolArn}
+  userPoolArn: arn:aws:cognito-idp:${self:provider.region}:${aws:accountId}:userpool/${env:USER_POOL_ID}
   bucketName: music-content-${sls:stage}-${aws:accountId}
   pythonRequirements:
     dockerizePip: true
@@ -11,12 +22,12 @@ provider:
   runtime: python3.9
   region: eu-central-1
   environment:
-    USER_POOL_ID: eu-central-1_AHb0aoBcX
-    CLIENT_ID: 7gvfvp342fp6i6bdtsjrgl6a47
+    USER_POOL_ID: ${env:USER_POOL_ID}
+    CLIENT_ID: ${env:CLIENT_ID}
     TABLE_NAME: Music
     NOTIFS_TABLE: Notifications
     BUCKET_NAME: ${self:custom.bucketName}
-    ALLOWED_ORIGIN: http://localhost:4200
+    ALLOWED_ORIGIN: ${self:custom.allowedOrigin}
 
   iamRoleStatements:
     - Effect: "Allow"
@@ -48,12 +59,7 @@ functions:
       - http:
           path: auth/register
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers:
-              - Content-Type
-              - Authorization
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
   login:
     handler: handlers/auth.login
@@ -61,12 +67,7 @@ functions:
       - http:
           path: auth/login
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers:
-              - Content-Type
-              - Authorization
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
   createArtist:
     handler: handlers/admin.create_artist
@@ -74,134 +75,92 @@ functions:
       - http:
           path: admin/artist
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers:
-              - Content-Type
-              - Authorization
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   discover:
-    handler: handlers/content.discover
+    handler: handlers/discover.discover
     events:
       - http:
           path: discover
           method: get
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
   seed:
-    handler: handlers/content.seed
+    handler: handlers/seed.seed
     timeout: 29
     events:
       - http:
           path: admin/seed
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   resetMusic:
-    handler: handlers/content.reset_music
+    handler: handlers/seed.reset_music
     events:
       - http:
           path: admin/reset-music
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   getUploadUrl:
-    handler: handlers/content.get_upload_url
+    handler: handlers/tracks.get_upload_url
     events:
       - http:
           path: admin/content/upload-url
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   createContent:
-    handler: handlers/content.create_content
+    handler: handlers/tracks.create_content
     events:
       - http:
           path: admin/content
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   deleteContent:
-    handler: handlers/content.delete_content
+    handler: handlers/tracks.delete_content
     events:
       - http:
           method: DELETE
           path: admin/content/{contentId}
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   deleteAlbum:
-    handler: handlers/content.delete_album
+    handler: handlers/albums.delete_album
     events:
       - http:
           method: DELETE
           path: admin/album/{albumId}
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   deleteArtist:
-    handler: handlers/content.delete_artist
+    handler: handlers/artists.delete_artist
     events:
       - http:
           method: DELETE
           path: admin/artist/{artistId}
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
 
   listContent:
-    handler: handlers/content.list_content
+    handler: handlers/tracks.list_content
     events:
       - http:
           path: content
           method: get
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
   getContent:
-    handler: handlers/content.get_content
+    handler: handlers/tracks.get_content
     events:
       - http:
           path: content/{id}
@@ -210,56 +169,38 @@ functions:
             parameters:
               paths:
                 id: true
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
   updateContent:
-    handler: handlers/content.update_content
+    handler: handlers/tracks.update_content
     events:
       - http:
           path: admin/content/update
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
 
   createAlbum:
-    handler: handlers/content.create_album
+    handler: handlers/albums.create_album
     events:
       - http:
           path: admin/album
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   updateAlbum:
-    handler: handlers/content.update_album
+    handler: handlers/albums.update_album
     events:
       - http:
           path: admin/album/update
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
 
   getAlbum:
-    handler: handlers/content.get_album
+    handler: handlers/albums.get_album
     events:
       - http:
           path: album/{albumId}
@@ -268,24 +209,18 @@ functions:
             parameters:
               paths:
                 albumId: true
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
   getArtist:
-    handler: handlers/content.list_artists
+    handler: handlers/artists.list_artists
     events:
       - http:
           path: artists
           method: get
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
   getArtistDetails:
-    handler: handlers/content.get_artist_details
+    handler: handlers/artists.get_artist_details
     events:
       - http:
           path: artists/{artistId}
@@ -294,14 +229,11 @@ functions:
             parameters:
               paths:
                 artistId: true
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
 
   getAlbumDetails:
-    handler: handlers/content.get_album_details
+    handler: handlers/albums.get_album_details
     events:
       - http:
           path: albumDetails/{albumId}
@@ -310,25 +242,17 @@ functions:
             parameters:
               paths:
                 albumId: true
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
+          cors: ${self:custom.cors}
 
 
   updateArtist:
-    handler: handlers/content.update_artist
+    handler: handlers/artists.update_artist
     events:
       - http:
           path: admin/artist/update
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
             
   subscribe:
     handler: handlers/subscriptions.subscribe
@@ -336,14 +260,9 @@ functions:
       - http:
           path: user/subscribe
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
-      - http:   # 🔥 preflight
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
+      - http:  # preflight
           path: user/subscribe
           method: options
           cors: true
@@ -354,13 +273,8 @@ functions:
       - http:
           path: user/unsubscribe
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
       - http:
           path: user/unsubscribe
           method: options
@@ -372,13 +286,8 @@ functions:
       - http:
           path: user/subscriptions
           method: get
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
       - http:
           path: user/subscriptions
           method: options
@@ -404,14 +313,9 @@ functions:
       - http:
           path: user/notifications
           method: get
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
-      - http: # 👈 PRE-FLIGHT (bez auth)
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
+      - http:  # preflight, no auth
           path: user/notifications
           method: options
           cors: true
@@ -422,14 +326,9 @@ functions:
       - http:
           path: user/notifications/read
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
-      - http: # 👈 PRE-FLIGHT
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
+      - http:  # preflight
           path: user/notifications/read
           method: options
           cors: true
@@ -440,14 +339,9 @@ functions:
       - http:
           path: user/notifications/read-all
           method: post
-          cors:
-            origin: 'http://localhost:4200'
-            headers: [ Content-Type, Authorization ]
-            allowCredentials: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            arn: arn:aws:cognito-idp:eu-central-1:605454152564:userpool/eu-central-1_AHb0aoBcX
-      - http: # 👈 PRE-FLIGHT
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer}
+      - http:  # preflight
           path: user/notifications/read-all
           method: options
           cors: true
@@ -460,7 +354,7 @@ resources:
         ResponseType: DEFAULT_4XX
         RestApiId: { Ref: ApiGatewayRestApi }
         ResponseParameters:
-          gatewayresponse.header.Access-Control-Allow-Origin: "'http://localhost:4200'"
+          gatewayresponse.header.Access-Control-Allow-Origin: "'${self:custom.allowedOrigin}'"
           gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
           gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
 
@@ -470,7 +364,7 @@ resources:
         ResponseType: DEFAULT_5XX
         RestApiId: { Ref: ApiGatewayRestApi }
         ResponseParameters:
-          gatewayresponse.header.Access-Control-Allow-Origin: "'http://localhost:4200'"
+          gatewayresponse.header.Access-Control-Allow-Origin: "'${self:custom.allowedOrigin}'"
           gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
           gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
 
@@ -537,7 +431,7 @@ resources:
         BucketName: ${self:custom.bucketName}
         CorsConfiguration:
           CorsRules:
-            - AllowedOrigins: ['http://localhost:4200']
+            - AllowedOrigins: [ '${self:custom.allowedOrigin}' ]
               AllowedMethods: ['GET','PUT','POST']
               AllowedHeaders: ['*']
               ExposedHeaders: ['ETag']
@@ -558,10 +452,10 @@ resources:
               KeyType: HASH
             - AttributeName: targetKey
               KeyType: RANGE
-          GlobalSecondaryIndexes: # 👈 DODAJ OVO
+          GlobalSecondaryIndexes:
             - IndexName: ByTarget
               KeySchema:
-                - AttributeName: targetKey   # HASH po targetu
+                - AttributeName: targetKey   # HASH by target
                   KeyType: HASH
                 - AttributeName: userId      # RANGE po useru (stabilan sort)
                   KeyType: RANGE

@@ -28,7 +28,6 @@ import { HeaderComponent } from './shared/header/header.component';
     RegisterComponent,
     DiscoverComponent,
     AdminUploadComponent,
-    AdminUploadComponent,
     ContentListComponent,
     ContentDetailComponent,
     CreateArtistComponent,
@@ -45,7 +44,6 @@ import { HeaderComponent } from './shared/header/header.component';
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
-    ReactiveFormsModule,
     AppRoutingModule,
   ],
   providers: [
